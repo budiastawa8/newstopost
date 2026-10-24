@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { jsonError } from "@/lib/api-error";
 import { summarizeArticle } from "@/lib/gemini";
 import type {
   ApiErrorBody,
@@ -7,6 +8,7 @@ import type {
 } from "@/lib/types";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 /** Gemini + retry/fallback model bisa melebihi batas default. */
 export const maxDuration = 60;
 
@@ -39,13 +41,6 @@ export async function POST(
     const result = await summarizeArticle(text, title);
     return NextResponse.json(result);
   } catch (error) {
-    const status =
-      typeof (error as { status?: number }).status === "number"
-        ? (error as { status: number }).status
-        : 500;
-    const message =
-      error instanceof Error ? error.message : "Terjadi kesalahan server.";
-
-    return NextResponse.json({ error: message }, { status });
+    return jsonError(error);
   }
 }

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { jsonError } from "@/lib/api-error";
 import { scrapeArticle } from "@/lib/scrape";
 import type { ApiErrorBody, ScrapeRequestBody, ScrapeResult } from "@/lib/types";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 /** Scrape + fallback WP/RSS bisa lebih dari 10 detik di Vercel. */
 export const maxDuration = 60;
 
@@ -32,13 +34,6 @@ export async function POST(
     const result = await scrapeArticle(url);
     return NextResponse.json(result);
   } catch (error) {
-    const status =
-      typeof (error as { status?: number }).status === "number"
-        ? (error as { status: number }).status
-        : 500;
-    const message =
-      error instanceof Error ? error.message : "Terjadi kesalahan server.";
-
-    return NextResponse.json({ error: message }, { status });
+    return jsonError(error);
   }
 }

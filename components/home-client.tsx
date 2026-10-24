@@ -56,12 +56,16 @@ type GeneratePhase =
   | "export";
 
 async function readError(response: Response): Promise<string> {
+  const raw = await response.text();
   try {
-    const data = (await response.json()) as ApiErrorBody;
-    return data.error || `HTTP ${response.status}`;
+    const data = JSON.parse(raw) as ApiErrorBody;
+    if (data.error?.trim()) return data.error;
   } catch {
-    return `HTTP ${response.status}`;
+    // bukan JSON (sering crash platform Vercel)
   }
+  const snippet = raw.replace(/\s+/g, " ").trim().slice(0, 160);
+  if (snippet) return `HTTP ${response.status}: ${snippet}`;
+  return `HTTP ${response.status}. Cek /api/health dan log Vercel (Functions).`;
 }
 
 export function HomeClient() {

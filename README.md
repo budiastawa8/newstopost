@@ -32,6 +32,7 @@ Buka [http://localhost:3000](http://localhost:3000).
    - `GEMINI_API_KEY` = key Anda
    - opsional `GEMINI_MODEL` = `gemini-3.6-flash` jika 3.8 sering 503
 4. Deploy. Setelah live, Generate memakai route `/api/scrape` dan `/api/summarize` (timeout hingga 60 detik).
+5. Cek cepat: buka `https://<domain-anda>/api/health` — harus `geminiKey: "configured"`.
 
 Jangan commit `.env.local`. File itu sudah di-ignore.
 

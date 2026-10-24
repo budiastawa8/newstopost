@@ -1,5 +1,5 @@
 import { Readability } from "@mozilla/readability";
-import { JSDOM } from "jsdom";
+import { parseHTML } from "linkedom";
 import { unstable_cache } from "next/cache";
 import {
   getCachedScrape,
@@ -46,8 +46,15 @@ function isCloudflareChallenge(html: string, status: number): boolean {
 }
 
 function parseWithReadability(html: string, url: string): ScrapeResult {
-  const dom = new JSDOM(html, { url });
-  const reader = new Readability(dom.window.document);
+  // linkedom: ringan & aman di Vercel (jsdom sering crash ERR_REQUIRE_ESM di serverless)
+  const { document } = parseHTML(html);
+  try {
+    // Bantu resolusi URL relatif bila parser mendukung location
+    Object.defineProperty(document, "URL", { value: url, configurable: true });
+  } catch {
+    // ignore
+  }
+  const reader = new Readability(document as unknown as Document);
   const article = reader.parse();
 
   if (!article || (!article.title && !article.textContent)) {
