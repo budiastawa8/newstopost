@@ -36,9 +36,14 @@ function slugifyTitle(title: string | null | undefined): string {
 
 export async function zipPngDataUrls(
   dataUrls: string[],
-  options?: { title?: string | null; generationKey?: string | null }
+  options?: {
+    title?: string | null;
+    generationKey?: string | null;
+    /** PNG Story 9:16 opsional */
+    storyDataUrl?: string | null;
+  }
 ): Promise<void> {
-  if (dataUrls.length === 0) {
+  if (dataUrls.length === 0 && !options?.storyDataUrl) {
     throw new Error("Tidak ada slide untuk diunduh.");
   }
 
@@ -56,6 +61,10 @@ export async function zipPngDataUrls(
     const index = String(i + 1).padStart(2, "0");
     folder.file(`slide-${index}.png`, dataUrlToUint8Array(dataUrl));
   });
+
+  if (options?.storyDataUrl) {
+    folder.file("story.png", dataUrlToUint8Array(options.storyDataUrl));
+  }
 
   const blob = await zip.generateAsync({ type: "blob" });
   downloadBlob(blob, `${folderName}.zip`);

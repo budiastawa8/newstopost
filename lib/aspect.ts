@@ -1,10 +1,17 @@
 import type { AspectRatio, AspectSize } from "@/lib/types";
 
+/** Instagram / Facebook Story */
+export const STORY_SIZE: AspectSize = { width: 1080, height: 1920 };
+
 export function getAspectSize(ratio: AspectRatio): AspectSize {
   if (ratio === "1080x1080") {
     return { width: 1080, height: 1080 };
   }
   return { width: 1080, height: 1350 };
+}
+
+export function getStorySize(): AspectSize {
+  return STORY_SIZE;
 }
 
 export function proxiedImageUrl(

@@ -15,10 +15,12 @@ export interface UrlFormProps {
   url: string;
   aspect: AspectRatio;
   paragraphCount: ParagraphCount;
+  includeStory: boolean;
   loading: boolean;
   onUrlChange: (value: string) => void;
   onAspectChange: (value: AspectRatio) => void;
   onParagraphCountChange: (value: ParagraphCount) => void;
+  onIncludeStoryChange: (value: boolean) => void;
   onSubmit: () => void;
 }
 
@@ -26,10 +28,12 @@ export function UrlForm({
   url,
   aspect,
   paragraphCount,
+  includeStory,
   loading,
   onUrlChange,
   onAspectChange,
   onParagraphCountChange,
+  onIncludeStoryChange,
   onSubmit,
 }: UrlFormProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -103,6 +107,32 @@ export function UrlForm({
           Untuk rasio 4:5, coba 4 paragraf agar slide ringkasan lebih terisi.
         </p>
       </div>
+
+      <label
+        className={cn(
+          "flex cursor-pointer items-start gap-3 rounded-md border px-3 py-3 transition-colors",
+          includeStory
+            ? "border-zinc-900 bg-zinc-50"
+            : "border-zinc-200 bg-white hover:bg-zinc-50",
+          loading && "pointer-events-none opacity-60"
+        )}
+      >
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 rounded border-zinc-300"
+          checked={includeStory}
+          disabled={loading}
+          onChange={(e) => onIncludeStoryChange(e.target.checked)}
+        />
+        <span className="min-w-0 space-y-0.5">
+          <span className="block text-sm font-medium text-zinc-900">
+            Sertakan Story 9:16
+          </span>
+          <span className="block text-xs text-zinc-500">
+            Tambah 1 PNG 1080×1920 untuk Instagram/Facebook Story (ikut di ZIP).
+          </span>
+        </span>
+      </label>
 
       <Button type="submit" disabled={loading || !url.trim()} className="w-full sm:w-auto">
         {loading ? "Generating…" : "Generate Carousel"}

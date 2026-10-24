@@ -13,6 +13,7 @@ import {
 } from "@/components/generate-progress";
 import { LogoUploader } from "@/components/logo-uploader";
 import { LogoutButton } from "@/components/logout-button";
+import { StoryPreview } from "@/components/story-preview";
 import { TemplatePicker } from "@/components/template-picker";
 import { UrlForm } from "@/components/url-form";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { buildSlides } from "@/lib/build-slides";
+import { captureStoryToPngDataUrl } from "@/lib/capture-story";
 import {
   DEFAULT_COVER_LABEL,
   loadStoredCoverLabel,
@@ -41,6 +43,10 @@ import {
   type ParagraphCount,
 } from "@/lib/paragraph-count";
 import {
+  loadStoredIncludeStory,
+  saveStoredIncludeStory,
+} from "@/lib/story-preference";
+import {
   DEFAULT_TEMPLATE_ID,
   getTemplate,
   loadStoredTemplateId,
@@ -54,6 +60,11 @@ import type {
   SlideModel,
   SummarizeResult,
 } from "@/lib/types";
+
+interface StoryAsset {
+  title: string;
+  imageUrl: string | null;
+}
 
 type GeneratePhase =
   | "idle"
@@ -82,9 +93,11 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
   const [paragraphCount, setParagraphCount] = useState<ParagraphCount>(
     DEFAULT_PARAGRAPH_COUNT
   );
+  const [includeStory, setIncludeStory] = useState(false);
   const [phase, setPhase] = useState<GeneratePhase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [slides, setSlides] = useState<SlideModel[]>([]);
+  const [storyAsset, setStoryAsset] = useState<StoryAsset | null>(null);
   const [summarizeResult, setSummarizeResult] =
     useState<SummarizeResult | null>(null);
   const [sourceTitle, setSourceTitle] = useState<string | null>(null);
@@ -107,6 +120,7 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
     setTemplateId(loadStoredTemplateId());
     setCoverLabel(loadStoredCoverLabel());
     setParagraphCount(loadStoredParagraphCount());
+    setIncludeStory(loadStoredIncludeStory());
   }, []);
 
   function handleTemplateChange(id: TemplateId) {
@@ -125,9 +139,24 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
     saveStoredParagraphCount(count);
   }
 
+  function handleIncludeStoryChange(value: boolean) {
+    setIncludeStory(value);
+    saveStoredIncludeStory(value);
+    // Jika sudah ada hasil generate, tampilkan/sembunyikan Story tanpa generate ulang
+    if (!value) {
+      setStoryAsset(null);
+      return;
+    }
+    const cover = slides.find((s) => s.kind === "cover");
+    if (cover && cover.kind === "cover") {
+      setStoryAsset({ title: cover.title, imageUrl: cover.imageUrl });
+    }
+  }
+
   async function handleGenerate() {
     setError(null);
     setSlides([]);
+    setStoryAsset(null);
     setSummarizeResult(null);
     setSourceTitle(null);
     setSourceUrl(null);
@@ -186,6 +215,11 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
       const nextSlides = buildSlides(scrape, summarize);
       const nextKey = `${scrape.sourceUrl}::${Date.now()}`;
       setSlides(nextSlides);
+      setStoryAsset(
+        includeStory
+          ? { title: scrape.title, imageUrl: scrape.mainImage }
+          : null
+      );
       setSummarizeResult(summarize);
       setSourceTitle(scrape.title);
       setSourceUrl(scrape.sourceUrl);
@@ -206,9 +240,23 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
         throw new Error("Preview belum siap. Generate ulang lalu unduh lagi.");
       }
       const dataUrls = await capture();
+
+      let storyDataUrl: string | null = null;
+      if (includeStory && storyAsset) {
+        storyDataUrl = await captureStoryToPngDataUrl({
+          title: storyAsset.title,
+          imageUrl: storyAsset.imageUrl,
+          logoSrc,
+          generationKey: generationKey || "story",
+          template,
+          coverLabel: normalizeCoverLabel(coverLabel),
+        });
+      }
+
       await zipPngDataUrls(dataUrls, {
         title: sourceTitle,
         generationKey,
+        storyDataUrl,
       });
       setPhase("ready");
     } catch (err) {
@@ -291,10 +339,12 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
               url={url}
               aspect={aspect}
               paragraphCount={paragraphCount}
+              includeStory={includeStory}
               loading={loading || exporting}
               onUrlChange={setUrl}
               onAspectChange={setAspect}
               onParagraphCountChange={handleParagraphCountChange}
+              onIncludeStoryChange={handleIncludeStoryChange}
               onSubmit={handleGenerate}
             />
 
@@ -347,16 +397,28 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
                 Belum ada slide. Masukkan URL berita lalu klik Generate Carousel.
               </div>
             ) : (
-              <CarouselPreview
-                key={generationKey || sourceUrl || "preview"}
-                ref={previewRef}
-                slides={slides}
-                aspect={aspect}
-                logoSrc={logoSrc}
-                template={template}
-                coverLabel={normalizeCoverLabel(coverLabel)}
-                generationKey={generationKey || sourceUrl || "preview"}
-              />
+              <div className="space-y-5">
+                <CarouselPreview
+                  key={generationKey || sourceUrl || "preview"}
+                  ref={previewRef}
+                  slides={slides}
+                  aspect={aspect}
+                  logoSrc={logoSrc}
+                  template={template}
+                  coverLabel={normalizeCoverLabel(coverLabel)}
+                  generationKey={generationKey || sourceUrl || "preview"}
+                />
+                {includeStory && storyAsset ? (
+                  <StoryPreview
+                    title={storyAsset.title}
+                    imageUrl={storyAsset.imageUrl}
+                    logoSrc={logoSrc}
+                    template={template}
+                    coverLabel={normalizeCoverLabel(coverLabel)}
+                    generationKey={generationKey || sourceUrl || "preview"}
+                  />
+                ) : null}
+              </div>
             )}
           </CardContent>
         </Card>
