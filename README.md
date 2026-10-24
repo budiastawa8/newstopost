@@ -28,6 +28,16 @@ Buka [http://localhost:3000](http://localhost:3000).
 | `GEMINI_MODEL` | Tidak | Override model (disarankan `gemini-3.5-flash-lite` di Vercel) |
 | `APP_AUTH_SECRET` | Tidak | Secret cookie (default = `APP_PASSWORD`) |
 
+## PWA
+
+App ini installable (standalone) lewat browser:
+- Manifest: `app/manifest.ts`
+- Service worker: Serwist (`/serwist/sw.js`) — aktif di production
+- Offline fallback: `/~offline` (Generate tetap butuh internet)
+
+Di Android Chrome: menu → **Install app** / **Add to Home screen**.  
+Di iPhone Safari: Share → **Add to Home Screen**.
+
 ## Deploy ke Vercel
 
 1. Push repo ini ke GitHub (branch `main`).

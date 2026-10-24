@@ -8,7 +8,12 @@ import {
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === "/login") return true;
+  if (pathname === "/~offline") return true;
   if (pathname.startsWith("/api/auth/")) return true;
+  if (pathname.startsWith("/serwist/")) return true;
+  if (pathname === "/manifest.webmanifest" || pathname === "/manifest") {
+    return true;
+  }
   if (pathname === "/icon.png" || pathname === "/apple-icon.png") return true;
   return false;
 }

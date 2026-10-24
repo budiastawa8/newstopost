@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import {
   Bebas_Neue,
   DM_Sans,
@@ -10,6 +10,7 @@ import {
   Space_Grotesk,
   Syne,
 } from "next/font/google";
+import { AppSerwistProvider } from "@/components/serwist-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -76,12 +77,26 @@ const siteUrl =
     ? `https://${process.env.VERCEL_URL}`
     : "http://localhost:3000");
 
+const APP_NAME = "NewsToPost";
+const APP_DESCRIPTION =
+  "Scrape URL berita, ringkas dengan Gemini, dan unduh slide carousel Instagram sebagai PNG.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "NewsToPost — Carousel Instagram dari Berita",
-  description:
-    "Scrape URL berita, ringkas dengan Gemini, dan unduh slide carousel Instagram sebagai PNG.",
-  applicationName: "NewsToPost",
+  applicationName: APP_NAME,
+  title: {
+    default: "NewsToPost — Carousel Instagram dari Berita",
+    template: "%s · NewsToPost",
+  },
+  description: APP_DESCRIPTION,
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: APP_NAME,
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: "/icon.png", type: "image/png" },
@@ -91,18 +106,25 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
+    type: "website",
+    siteName: APP_NAME,
     title: "NewsToPost",
-    description:
-      "Scrape URL berita, ringkas dengan Gemini, dan unduh slide carousel Instagram sebagai PNG.",
+    description: APP_DESCRIPTION,
     images: [{ url: "/logo.png", width: 512, height: 512, alt: "NewsToPost" }],
   },
   twitter: {
     card: "summary",
     title: "NewsToPost",
-    description:
-      "Scrape URL berita, ringkas dengan Gemini, dan unduh slide carousel Instagram sebagai PNG.",
+    description: APP_DESCRIPTION,
     images: ["/logo.png"],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f766e",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -113,7 +135,7 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${fontVariables} h-full antialiased`}>
       <body className="min-h-full bg-[radial-gradient(ellipse_at_top,_#f0fdfa_0%,_#fafafa_45%,_#f4f4f5_100%)] font-[family-name:var(--font-geist-sans)] text-zinc-900">
-        {children}
+        <AppSerwistProvider>{children}</AppSerwistProvider>
       </body>
     </html>
   );
