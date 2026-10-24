@@ -26,7 +26,7 @@ export function buildSlides(
     },
     {
       kind: "summary",
-      points: summarize.points.slice(0, 3),
+      points: summarize.points,
     },
   ];
 

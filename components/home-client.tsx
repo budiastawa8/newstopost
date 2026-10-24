@@ -35,6 +35,12 @@ import {
 import { zipPngDataUrls } from "@/lib/export-slides";
 import { loadStoredLogo } from "@/lib/logo-storage";
 import {
+  DEFAULT_PARAGRAPH_COUNT,
+  loadStoredParagraphCount,
+  saveStoredParagraphCount,
+  type ParagraphCount,
+} from "@/lib/paragraph-count";
+import {
   DEFAULT_TEMPLATE_ID,
   getTemplate,
   loadStoredTemplateId,
@@ -73,6 +79,9 @@ async function readError(response: Response): Promise<string> {
 export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
   const [url, setUrl] = useState("");
   const [aspect, setAspect] = useState<AspectRatio>("1080x1350");
+  const [paragraphCount, setParagraphCount] = useState<ParagraphCount>(
+    DEFAULT_PARAGRAPH_COUNT
+  );
   const [phase, setPhase] = useState<GeneratePhase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [slides, setSlides] = useState<SlideModel[]>([]);
@@ -97,6 +106,7 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
     setLogoSrc(loadStoredLogo());
     setTemplateId(loadStoredTemplateId());
     setCoverLabel(loadStoredCoverLabel());
+    setParagraphCount(loadStoredParagraphCount());
   }, []);
 
   function handleTemplateChange(id: TemplateId) {
@@ -108,6 +118,11 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
     const next = value.slice(0, 48);
     setCoverLabel(next);
     saveStoredCoverLabel(normalizeCoverLabel(next));
+  }
+
+  function handleParagraphCountChange(count: ParagraphCount) {
+    setParagraphCount(count);
+    saveStoredParagraphCount(count);
   }
 
   async function handleGenerate() {
@@ -149,7 +164,11 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
       const summarizeRes = await fetch("/api/summarize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: scrape.content, title: scrape.title }),
+        body: JSON.stringify({
+          text: scrape.content,
+          title: scrape.title,
+          paragraphCount,
+        }),
       });
 
       if (!summarizeRes.ok) {
@@ -270,9 +289,11 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
             <UrlForm
               url={url}
               aspect={aspect}
+              paragraphCount={paragraphCount}
               loading={loading || exporting}
               onUrlChange={setUrl}
               onAspectChange={setAspect}
+              onParagraphCountChange={handleParagraphCountChange}
               onSubmit={handleGenerate}
             />
 

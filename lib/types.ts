@@ -1,4 +1,7 @@
+import type { ParagraphCount } from "@/lib/paragraph-count";
+
 export type AspectRatio = "1080x1350" | "1080x1080";
+export type { ParagraphCount };
 
 export type ScrapeSource = "wordpress" | "rss" | "html";
 
@@ -48,6 +51,8 @@ export interface ScrapeRequestBody {
 export interface SummarizeRequestBody {
   text: string;
   title?: string;
+  /** Jumlah paragraf ringkasan di slide (2–4) */
+  paragraphCount?: ParagraphCount;
 }
 
 export interface ApiErrorBody {

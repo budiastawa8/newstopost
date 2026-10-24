@@ -16,15 +16,22 @@ export interface SummarySlideProps {
 export const SummarySlide = forwardRef<HTMLDivElement, SummarySlideProps>(
   function SummarySlide({ slide, size, logoSrc, template }, ref) {
     const isSquare = size.height === 1080;
-    const paragraphs = slide.points.slice(0, 3);
-    const fontSize = isSquare
+    const paragraphs = slide.points;
+    const count = paragraphs.length;
+    const baseFont = isSquare
       ? template.layout.bodySize.square
       : template.layout.bodySize.portrait;
+    // 2 paragraf: lebih besar biar mengisi; 4: sedikit dipadatkan
+    const fontSize =
+      count <= 2 ? baseFont + (isSquare ? 4 : 6) : count >= 4 ? baseFont - 2 : baseFont;
     const titleSize = isSquare
       ? template.layout.summaryTitleSize.square
       : template.layout.summaryTitleSize.portrait;
-    const gap = isSquare ? 28 : 36;
+    const gap =
+      count <= 2 ? (isSquare ? 40 : 52) : count >= 4 ? (isSquare ? 20 : 24) : isSquare ? 28 : 36;
     const isLight = template.id === "clean-paper";
+    const distribute =
+      !isSquare && count <= 3 ? "justify-between" : "justify-start";
 
     return (
       <SlideFrame
@@ -54,8 +61,8 @@ export const SummarySlide = forwardRef<HTMLDivElement, SummarySlideProps>(
           </h2>
 
           <div
-            className="flex flex-1 flex-col justify-start overflow-hidden"
-            style={{ gap }}
+            className={`flex flex-1 flex-col overflow-hidden ${distribute}`}
+            style={{ gap: distribute === "justify-between" ? undefined : gap }}
           >
             {paragraphs.map((paragraph, index) => (
               <p

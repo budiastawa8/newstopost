@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { jsonError } from "@/lib/api-error";
 import { summarizeArticle } from "@/lib/gemini";
+import { normalizeParagraphCount } from "@/lib/paragraph-count";
 import type {
   ApiErrorBody,
   SummarizeRequestBody,
@@ -30,6 +31,7 @@ export async function POST(
     const text = typeof body.text === "string" ? body.text.trim() : "";
     const title =
       typeof body.title === "string" ? body.title.trim() : undefined;
+    const paragraphCount = normalizeParagraphCount(body.paragraphCount);
 
     if (!text) {
       return NextResponse.json(
@@ -38,7 +40,7 @@ export async function POST(
       );
     }
 
-    const result = await summarizeArticle(text, title);
+    const result = await summarizeArticle(text, title, paragraphCount);
     return NextResponse.json(result);
   } catch (error) {
     return jsonError(error);

@@ -1,9 +1,13 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  DEFAULT_PARAGRAPH_COUNT,
+  normalizeParagraphCount,
+  type ParagraphCount,
+} from "@/lib/paragraph-count";
 import { isVercel, SUMMARIZE_BUDGET_MS } from "@/lib/runtime";
 import type { SummarizeResult } from "@/lib/types";
 
 const MAX_TEXT_CHARS = isVercel ? 8_000 : 12_000;
-const REQUIRED_POINTS = 3;
 const MIN_HASHTAGS = 5;
 const MAX_HASHTAGS = 12;
 /** Di Vercel retry panjang = 504 FUNCTION_INVOCATION_TIMEOUT. */
@@ -47,7 +51,10 @@ function normalizeHashtag(tag: string): string | null {
   return withHash;
 }
 
-function validateSummarizePayload(value: unknown): SummarizeResult {
+function validateSummarizePayload(
+  value: unknown,
+  paragraphCount: ParagraphCount
+): SummarizeResult {
   if (!value || typeof value !== "object") {
     throw new Error("Respons Gemini bukan objek JSON.");
   }
@@ -66,10 +73,12 @@ function validateSummarizePayload(value: unknown): SummarizeResult {
     .filter((p): p is string => typeof p === "string")
     .map((p) => p.trim())
     .filter((p) => p.length > 0)
-    .slice(0, REQUIRED_POINTS);
+    .slice(0, paragraphCount);
 
-  if (points.length !== REQUIRED_POINTS) {
-    throw new Error(`Jumlah paragraf ringkasan harus tepat ${REQUIRED_POINTS}.`);
+  if (points.length !== paragraphCount) {
+    throw new Error(
+      `Jumlah paragraf ringkasan harus tepat ${paragraphCount}.`
+    );
   }
 
   const caption =
@@ -113,11 +122,20 @@ function remainingMs(deadline: number): number {
   return Math.max(0, deadline - Date.now());
 }
 
-function buildPrompt(truncated: string, title?: string): string {
+function buildPrompt(
+  truncated: string,
+  paragraphCount: ParagraphCount,
+  title?: string
+): string {
+  const pointsExample = Array.from(
+    { length: paragraphCount },
+    (_, i) => `"p${i + 1}"`
+  ).join(",");
+
   return [
     "Kamu adalah editor media sosial untuk carousel berita Instagram & Facebook.",
     "Dari teks berita, buat:",
-    "1) TEPAT 3 paragraf ringkasan pendek Bahasa Indonesia untuk slide carousel.",
+    `1) TEPAT ${paragraphCount} paragraf ringkasan pendek Bahasa Indonesia untuk slide carousel.`,
     "   - Tiap paragraf maksimal 2 kalimat padat (~40–70 kata), faktual, tanpa emoji/numbering/markdown.",
     "2) Satu caption siap posting untuk Instagram/Facebook (Bahasa Indonesia).",
     "   - 2–4 kalimat menarik, jelas, boleh 1–2 emoji relevan (jangan berlebihan).",
@@ -126,7 +144,8 @@ function buildPrompt(truncated: string, title?: string): string {
     "3) 5–12 hashtag relevan dengan topik artikel (campuran spesifik + umum).",
     "   - Format: diawali #, tanpa spasi, Bahasa Indonesia/Inggris yang wajar.",
     "",
-    'Output HANYA JSON murni: {"points":["p1","p2","p3"],"caption":"...","hashtags":["#a","#b"]}',
+    `Output HANYA JSON murni: {"points":[${pointsExample}],"caption":"...","hashtags":["#a","#b"]}`,
+    `Array points HARUS berisi tepat ${paragraphCount} string.`,
     title ? `Judul: ${title}` : "",
     "Teks berita:",
     truncated,
@@ -139,6 +158,7 @@ async function generateWithModel(
   genAI: GoogleGenerativeAI,
   modelId: string,
   prompt: string,
+  paragraphCount: ParagraphCount,
   deadline: number
 ): Promise<SummarizeResult> {
   const model = genAI.getGenerativeModel({
@@ -168,7 +188,7 @@ async function generateWithModel(
       });
       const raw = result.response.text();
       const parsed = extractJsonObject(raw);
-      return validateSummarizePayload(parsed);
+      return validateSummarizePayload(parsed, paragraphCount);
     } catch (error) {
       lastError = error;
       if (!isRetryableGeminiError(error) || attempt === MAX_ATTEMPTS_PER_MODEL) {
@@ -188,12 +208,14 @@ async function generateWithModel(
 
 export async function summarizeArticle(
   text: string,
-  title?: string
+  title?: string,
+  paragraphCountInput: number = DEFAULT_PARAGRAPH_COUNT
 ): Promise<SummarizeResult> {
+  const paragraphCount = normalizeParagraphCount(paragraphCountInput);
   const apiKey = getApiKey();
   const truncated = text.slice(0, MAX_TEXT_CHARS);
   const genAI = new GoogleGenerativeAI(apiKey);
-  const prompt = buildPrompt(truncated, title);
+  const prompt = buildPrompt(truncated, paragraphCount, title);
   const deadline = Date.now() + SUMMARIZE_BUDGET_MS;
 
   let lastError: unknown;
@@ -201,7 +223,13 @@ export async function summarizeArticle(
   for (const modelId of MODEL_CANDIDATES) {
     if (remainingMs(deadline) < 2_000) break;
     try {
-      return await generateWithModel(genAI, modelId, prompt, deadline);
+      return await generateWithModel(
+        genAI,
+        modelId,
+        prompt,
+        paragraphCount,
+        deadline
+      );
     } catch (error) {
       lastError = error;
       if ((error as { status?: number }).status === 504) {
