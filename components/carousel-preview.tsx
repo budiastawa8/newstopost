@@ -32,6 +32,7 @@ export interface CarouselPreviewProps {
   generationKey: string;
   template: DesignTemplate;
   coverLabel: string;
+  /** Override lebar preview (px). Default: isi lebar kartu. */
   previewWidth?: number;
 }
 
@@ -87,11 +88,14 @@ export const CarouselPreview = forwardRef<
     generationKey,
     template,
     coverLabel,
-    previewWidth = 320,
+    previewWidth: previewWidthProp,
   },
   ref
 ) {
   const size = useMemo(() => getAspectSize(aspect), [aspect]);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const [measuredWidth, setMeasuredWidth] = useState(360);
+  const previewWidth = previewWidthProp ?? measuredWidth;
   const scale = previewWidth / size.width;
   const slidesRef = useRef(slides);
   const logoRef = useRef(logoSrc);
@@ -102,6 +106,21 @@ export const CarouselPreview = forwardRef<
   const [isCapturing, setIsCapturing] = useState(false);
   const dragStartX = useRef<number | null>(null);
   const dragDeltaX = useRef(0);
+
+  useEffect(() => {
+    if (previewWidthProp != null) return;
+    const el = shellRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const update = () => {
+      const w = el.clientWidth;
+      // Isi lebar kartu preview; batas atas biar tidak terlalu besar di desktop
+      setMeasuredWidth(Math.max(280, Math.min(w, 440)));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [previewWidthProp]);
 
   slidesRef.current = slides;
   logoRef.current = logoSrc;
@@ -201,7 +220,7 @@ export const CarouselPreview = forwardRef<
   const previewHeight = size.height * scale;
 
   return (
-    <div className="relative flex flex-col items-center gap-4">
+    <div ref={shellRef} className="relative flex w-full flex-col items-center gap-4">
       {isCapturing ? (
         <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-white/80 text-sm font-medium text-zinc-700 backdrop-blur-sm">
           Menyusun PNG sesuai preview…

@@ -50,7 +50,6 @@ export function buildSlides(
     slides.push({
       kind: "photo",
       imageUrl: extras[i],
-      caption: "Dokumentasi",
     });
   }
 
