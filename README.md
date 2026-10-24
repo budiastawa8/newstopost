@@ -7,12 +7,14 @@ Ubah URL berita jadi carousel Instagram/Facebook: scrape artikel, ringkas dengan
 - Next.js (App Router) + Tailwind + shadcn/ui
 - Gemini API (ringkasan + caption/hashtag)
 - html-to-image + JSZip (export PNG)
+- Password bersama (middleware) agar hanya tim yang bisa akses
 
 ## Lokal
 
 ```bash
 cp .env.example .env.local
 # isi GEMINI_API_KEY=...
+# opsional: APP_PASSWORD=rahasia-tim  (tanpa ini, lokal tetap terbuka)
 npm install
 npm run dev
 ```
@@ -22,7 +24,9 @@ Buka [http://localhost:3000](http://localhost:3000).
 | Variabel | Wajib | Keterangan |
 |---|---|---|
 | `GEMINI_API_KEY` | Ya | API key Google AI Studio |
-| `GEMINI_MODEL` | Tidak | Override model utama (default `gemini-3.8-flash`, ada fallback otomatis) |
+| `APP_PASSWORD` | Ya di Vercel | Password bersama tim; tanpa ini production dikunci |
+| `GEMINI_MODEL` | Tidak | Override model (disarankan `gemini-3.5-flash-lite` di Vercel) |
+| `APP_AUTH_SECRET` | Tidak | Secret cookie (default = `APP_PASSWORD`) |
 
 ## Deploy ke Vercel
 
@@ -30,9 +34,10 @@ Buka [http://localhost:3000](http://localhost:3000).
 2. Di [vercel.com/new](https://vercel.com/new): **Import** repo → Framework **Next.js** (otomatis).
 3. **Environment Variables** (Production + Preview):
    - `GEMINI_API_KEY` = key Anda
-   - disarankan `GEMINI_MODEL` = `gemini-3.5-flash-lite` (lebih cepat, jarang timeout di Hobby)
-4. Deploy. Setelah live, Generate memakai route `/api/scrape` dan `/api/summarize` (timeout hingga 60 detik).
-5. Cek cepat: buka `https://<domain-anda>/api/health` — harus `geminiKey: "configured"`.
+   - `APP_PASSWORD` = password yang hanya diketahui tim
+   - disarankan `GEMINI_MODEL` = `gemini-3.5-flash-lite`
+4. Deploy. Buka situs → halaman **Login** → masuk dengan password → Generate.
+5. Sesi berlaku 14 hari (cookie httpOnly). Tombol **Keluar** di header menghapus sesi.
 
 Jangan commit `.env.local`. File itu sudah di-ignore.
 

@@ -12,6 +12,7 @@ import {
   PreviewSkeleton,
 } from "@/components/generate-progress";
 import { LogoUploader } from "@/components/logo-uploader";
+import { LogoutButton } from "@/components/logout-button";
 import { TemplatePicker } from "@/components/template-picker";
 import { UrlForm } from "@/components/url-form";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,7 @@ async function readError(response: Response): Promise<string> {
   return `HTTP ${response.status}. Cek /api/health dan log Vercel (Functions).`;
 }
 
-export function HomeClient() {
+export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
   const [url, setUrl] = useState("");
   const [aspect, setAspect] = useState<AspectRatio>("1080x1350");
   const [phase, setPhase] = useState<GeneratePhase>("idle");
@@ -210,10 +211,13 @@ export function HomeClient() {
           priority
           className="h-20 w-20 shrink-0 rounded-2xl shadow-md ring-1 ring-black/10 sm:h-[88px] sm:w-[88px]"
         />
-        <div className="space-y-2">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">
-            NewsToPost
-          </p>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">
+              NewsToPost
+            </p>
+            {showLogout ? <LogoutButton /> : null}
+          </div>
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
             Berita jadi carousel Instagram
           </h1>
