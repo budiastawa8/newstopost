@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import {
   CarouselPreview,
@@ -200,17 +201,27 @@ export function HomeClient() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 sm:px-6">
-      <header className="space-y-2">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">
-          NewsToPost
-        </p>
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
-          Berita jadi carousel Instagram
-        </h1>
-        <p className="max-w-2xl text-zinc-600">
-          Tempel URL berita, generate ringkasan, lalu unduh slide PNG siap
-          unggah (1080×1350 atau 1080×1080).
-        </p>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+        <Image
+          src="/logo.png"
+          alt="NewsToPost"
+          width={88}
+          height={88}
+          priority
+          className="h-20 w-20 shrink-0 rounded-2xl shadow-md ring-1 ring-black/10 sm:h-[88px] sm:w-[88px]"
+        />
+        <div className="space-y-2">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">
+            NewsToPost
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
+            Berita jadi carousel Instagram
+          </h1>
+          <p className="max-w-2xl text-zinc-600">
+            Tempel URL berita, generate ringkasan, lalu unduh slide PNG siap
+            unggah (1080×1350 atau 1080×1080).
+          </p>
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">

@@ -70,10 +70,39 @@ const fontVariables = [
   manrope.variable,
 ].join(" ");
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "NewsToPost — Carousel Instagram dari Berita",
   description:
     "Scrape URL berita, ringkas dengan Gemini, dan unduh slide carousel Instagram sebagai PNG.",
+  applicationName: "NewsToPost",
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  openGraph: {
+    title: "NewsToPost",
+    description:
+      "Scrape URL berita, ringkas dengan Gemini, dan unduh slide carousel Instagram sebagai PNG.",
+    images: [{ url: "/logo.png", width: 512, height: 512, alt: "NewsToPost" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "NewsToPost",
+    description:
+      "Scrape URL berita, ringkas dengan Gemini, dan unduh slide carousel Instagram sebagai PNG.",
+    images: ["/logo.png"],
+  },
 };
 
 export default function RootLayout({
