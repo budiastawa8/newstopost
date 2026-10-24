@@ -146,6 +146,88 @@ export const FreeDesignSlide = forwardRef<HTMLDivElement, FreeDesignSlideProps>(
       );
     }
 
+    if (design.id === "quote-serif-light") {
+      return (
+        <SlideFrame ref={ref} size={size} style={{ fontFamily: design.fonts.body }}>
+          {photo}
+          <div
+            className="absolute inset-0"
+            style={{ background: design.colors.overlay }}
+          />
+          <SlideLogo logoSrc={logoSrc} tone="onLight" />
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-16 text-center">
+            <span
+              className="mb-8 text-5xl leading-none"
+              style={{ color: design.colors.accent, fontFamily: design.fonts.display }}
+            >
+              “
+            </span>
+            <HighlightedTitle
+              title={headline || "Tulis quote Anda di sini"}
+              highlights={titleHighlights}
+              highlightBg={design.colors.highlightBg}
+              highlightFg={design.colors.highlightFg}
+              className="max-w-[92%] font-medium leading-snug"
+              style={{
+                fontSize: quoteSize,
+                fontFamily: design.fonts.display,
+                color: design.colors.text,
+                textAlign: "center",
+              }}
+            />
+            {subtext?.trim() ? (
+              <p
+                className="mt-8 text-base tracking-wide"
+                style={{ color: design.colors.muted }}
+              >
+                — {subtext.trim()}
+              </p>
+            ) : null}
+          </div>
+        </SlideFrame>
+      );
+    }
+
+    if (design.id === "quote-split") {
+      return (
+        <SlideFrame ref={ref} size={size} style={{ fontFamily: design.fonts.body }}>
+          <div className="absolute inset-x-0 top-0 h-[48%] overflow-hidden">
+            {photo}
+          </div>
+          <SlideLogo logoSrc={logoSrc} tone="onDark" className="right-10 top-10" />
+          <div
+            className="absolute inset-x-0 bottom-0 flex flex-col justify-center px-14 py-14"
+            style={{ height: "54%", background: design.colors.card }}
+          >
+            <div
+              className="mb-6 h-1 w-14 rounded-full"
+              style={{ background: design.colors.accent }}
+            />
+            <HighlightedTitle
+              title={headline || "Tulis quote Anda di sini"}
+              highlights={titleHighlights}
+              highlightBg={design.colors.highlightBg}
+              highlightFg={design.colors.highlightFg}
+              className="font-bold leading-snug"
+              style={{
+                fontSize: isSquare ? 38 : 44,
+                fontFamily: design.fonts.display,
+                color: design.colors.text,
+              }}
+            />
+            {subtext?.trim() ? (
+              <p
+                className="mt-6 text-lg"
+                style={{ color: design.colors.muted, fontFamily: design.fonts.body }}
+              >
+                {subtext.trim()}
+              </p>
+            ) : null}
+          </div>
+        </SlideFrame>
+      );
+    }
+
     if (design.id === "editorial-bar") {
       return (
         <SlideFrame ref={ref} size={size} style={{ fontFamily: design.fonts.body }}>
@@ -176,6 +258,135 @@ export const FreeDesignSlide = forwardRef<HTMLDivElement, FreeDesignSlideProps>(
               <p
                 className="mt-5 max-w-[92%] text-xl leading-snug"
                 style={{ color: design.colors.muted, fontFamily: design.fonts.body }}
+              >
+                {subtext.trim()}
+              </p>
+            ) : null}
+          </div>
+        </SlideFrame>
+      );
+    }
+
+    if (design.id === "promo-badge") {
+      return (
+        <SlideFrame ref={ref} size={size} style={{ fontFamily: design.fonts.body }}>
+          {photo}
+          <div
+            className="absolute inset-0"
+            style={{ background: design.colors.overlay }}
+          />
+          <SlideLogo logoSrc={logoSrc} />
+          <div className="absolute inset-x-0 bottom-0 z-10 px-14 pb-16 pt-36">
+            <span
+              className="mb-5 inline-flex rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-white"
+              style={{ background: design.colors.accent }}
+            >
+              Promo
+            </span>
+            <HighlightedTitle
+              title={headline || "Judul promo Anda"}
+              highlights={titleHighlights}
+              highlightBg={design.colors.highlightBg}
+              highlightFg={design.colors.highlightFg}
+              className="font-bold leading-tight"
+              style={{
+                fontSize: titleSize - 4,
+                fontFamily: design.fonts.display,
+                color: design.colors.text,
+              }}
+            />
+            {subtext?.trim() ? (
+              <p
+                className="mt-5 text-xl font-medium"
+                style={{ color: design.colors.muted }}
+              >
+                {subtext.trim()}
+              </p>
+            ) : null}
+          </div>
+        </SlideFrame>
+      );
+    }
+
+    if (design.id === "promo-deal") {
+      return (
+        <SlideFrame ref={ref} size={size} style={{ fontFamily: design.fonts.body }}>
+          {photo}
+          <div
+            className="absolute inset-0"
+            style={{ background: design.colors.overlay }}
+          />
+          <SlideLogo logoSrc={logoSrc} tone="onDark" />
+          <div className="absolute inset-0 z-10 flex items-end justify-center p-12 pb-14">
+            <div
+              className="w-full rounded-[2rem] px-12 py-12 shadow-2xl"
+              style={{ background: design.colors.card }}
+            >
+              <p
+                className="mb-3 text-sm font-bold uppercase tracking-[0.2em]"
+                style={{ color: design.colors.accent }}
+              >
+                Special deal
+              </p>
+              <HighlightedTitle
+                title={headline || "Penawaran Anda"}
+                highlights={titleHighlights}
+                highlightBg={design.colors.highlightBg}
+                highlightFg={design.colors.highlightFg}
+                className="font-bold uppercase leading-[0.95] tracking-wide"
+                style={{
+                  fontSize: isSquare ? 56 : 62,
+                  fontFamily: design.fonts.display,
+                  color: design.colors.text,
+                }}
+              />
+              {subtext?.trim() ? (
+                <p
+                  className="mt-5 text-lg font-semibold"
+                  style={{ color: design.colors.muted }}
+                >
+                  {subtext.trim()}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </SlideFrame>
+      );
+    }
+
+    if (design.id === "promo-soft") {
+      return (
+        <SlideFrame ref={ref} size={size} style={{ fontFamily: design.fonts.body }}>
+          <div className="absolute inset-x-0 top-0 h-[55%] overflow-hidden">
+            {photo}
+          </div>
+          <SlideLogo logoSrc={logoSrc} tone="onDark" className="right-10 top-10" />
+          <div
+            className="absolute inset-x-0 bottom-0 flex flex-col justify-center px-14 py-14"
+            style={{ height: "48%", background: design.colors.card }}
+          >
+            <p
+              className="mb-4 text-xs font-semibold uppercase tracking-[0.24em]"
+              style={{ color: design.colors.accent }}
+            >
+              Promo
+            </p>
+            <HighlightedTitle
+              title={headline || "Judul promo lembut"}
+              highlights={titleHighlights}
+              highlightBg={design.colors.highlightBg}
+              highlightFg={design.colors.highlightFg}
+              className="font-semibold leading-snug"
+              style={{
+                fontSize: isSquare ? 40 : 46,
+                fontFamily: design.fonts.display,
+                color: design.colors.text,
+              }}
+            />
+            {subtext?.trim() ? (
+              <p
+                className="mt-5 text-base leading-relaxed"
+                style={{ color: design.colors.muted }}
               >
                 {subtext.trim()}
               </p>

@@ -237,13 +237,21 @@ export function FreeDesignClient() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="free-sub">Teks pendukung (opsional)</Label>
+            <Label htmlFor="free-sub">
+              {design.category === "promo"
+                ? "CTA / detail (opsional)"
+                : "Teks pendukung (opsional)"}
+            </Label>
             <Input
               id="free-sub"
               value={subtext}
               disabled={exporting}
               onChange={(e) => setSubtext(e.target.value)}
-              placeholder="Kredit, lokasi, atau kalimat pendek"
+              placeholder={
+                design.category === "promo"
+                  ? "Mis. Berlaku hingga Minggu · Klaim sekarang"
+                  : "Kredit, lokasi, atau kalimat pendek"
+              }
               maxLength={120}
             />
           </div>

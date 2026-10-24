@@ -4,10 +4,15 @@ export type FreeDesignId =
   | "quote-noir"
   | "quote-linen"
   | "quote-glass"
+  | "quote-serif-light"
+  | "quote-split"
   | "editorial-bar"
-  | "impact-story";
+  | "impact-story"
+  | "promo-badge"
+  | "promo-deal"
+  | "promo-soft";
 
-export type FreeDesignCategory = "quote" | "poster";
+export type FreeDesignCategory = "quote" | "poster" | "promo";
 
 export interface FreeDesignPreset {
   id: FreeDesignId;
@@ -98,6 +103,49 @@ export const FREE_DESIGNS: FreeDesignPreset[] = [
     },
   },
   {
+    id: "quote-serif-light",
+    name: "Serif Light",
+    category: "quote",
+    description: "Terang minimal — quote serif di tengah",
+    swatch: ["#fafaf9", "#1c1917", "#78716c"],
+    preferredAspect: "1080x1350",
+    fonts: {
+      display: "var(--font-fraunces)",
+      body: "var(--font-manrope)",
+    },
+    colors: {
+      text: "#1c1917",
+      muted: "#57534e",
+      accent: "#78716c",
+      overlay:
+        "linear-gradient(to bottom, rgba(250,250,249,0.55) 0%, rgba(250,250,249,0.88) 100%)",
+      card: "#fafaf9",
+      highlightBg: "#1c1917",
+      highlightFg: "#fafaf9",
+    },
+  },
+  {
+    id: "quote-split",
+    name: "Split Quote",
+    category: "quote",
+    description: "Foto atas, tipografi bold di panel bawah gelap",
+    swatch: ["#18181b", "#fafafa", "#f97316"],
+    preferredAspect: "1080x1350",
+    fonts: {
+      display: "var(--font-syne)",
+      body: "var(--font-outfit)",
+    },
+    colors: {
+      text: "#fafafa",
+      muted: "rgba(250,250,250,0.65)",
+      accent: "#f97316",
+      overlay: "transparent",
+      card: "#18181b",
+      highlightBg: "#f97316",
+      highlightFg: "#18181b",
+    },
+  },
+  {
     id: "editorial-bar",
     name: "Editorial Bar",
     category: "poster",
@@ -139,6 +187,70 @@ export const FREE_DESIGNS: FreeDesignPreset[] = [
       highlightFg: "#042f2e",
     },
   },
+  {
+    id: "promo-badge",
+    name: "Promo Badge",
+    category: "promo",
+    description: "Badge PROMO + headline kuat di atas foto",
+    swatch: ["#0f172a", "#fff7ed", "#ea580c"],
+    preferredAspect: "1080x1350",
+    fonts: {
+      display: "var(--font-space-grotesk)",
+      body: "var(--font-dm-sans)",
+    },
+    colors: {
+      text: "#ffffff",
+      muted: "rgba(255,255,255,0.78)",
+      accent: "#ea580c",
+      overlay:
+        "linear-gradient(to top, rgba(15,23,42,0.92) 0%, rgba(15,23,42,0.35) 55%, rgba(15,23,42,0.15) 100%)",
+      highlightBg: "#ea580c",
+      highlightFg: "#ffffff",
+    },
+  },
+  {
+    id: "promo-deal",
+    name: "Deal Burst",
+    category: "promo",
+    description: "Panel aksen besar — cocok penawaran & CTA",
+    swatch: ["#111827", "#fef3c7", "#dc2626"],
+    preferredAspect: "1080x1080",
+    fonts: {
+      display: "var(--font-bebas)",
+      body: "var(--font-plus-jakarta)",
+    },
+    colors: {
+      text: "#111827",
+      muted: "#4b5563",
+      accent: "#dc2626",
+      overlay:
+        "linear-gradient(160deg, rgba(17,24,39,0.25) 0%, rgba(17,24,39,0.55) 100%)",
+      card: "#fef3c7",
+      highlightBg: "#dc2626",
+      highlightFg: "#ffffff",
+    },
+  },
+  {
+    id: "promo-soft",
+    name: "Soft Promo",
+    category: "promo",
+    description: "Pastel lembut — promo ramah & premium",
+    swatch: ["#ecfdf5", "#064e3b", "#34d399"],
+    preferredAspect: "1080x1350",
+    fonts: {
+      display: "var(--font-outfit)",
+      body: "var(--font-manrope)",
+    },
+    colors: {
+      text: "#064e3b",
+      muted: "#047857",
+      accent: "#059669",
+      overlay: "transparent",
+      card: "#ecfdf5",
+      highlightBg: "#34d399",
+      highlightFg: "#064e3b",
+    },
+  },
 ];
 
 export const DEFAULT_FREE_DESIGN_ID: FreeDesignId = "quote-noir";
@@ -165,4 +277,10 @@ export function loadStoredFreeDesignId(): FreeDesignId {
 export function saveStoredFreeDesignId(id: FreeDesignId): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STORAGE_KEY, id);
+}
+
+export function categoryLabel(category: FreeDesignCategory): string {
+  if (category === "quote") return "Quote";
+  if (category === "promo") return "Promo";
+  return "Poster";
 }
