@@ -27,10 +27,11 @@ export const CoverSlide = forwardRef<HTMLDivElement, CoverSlideProps>(
       ? template.layout.coverTitleSize.square
       : template.layout.coverTitleSize.portrait;
 
+    // Overlay gelap hanya di band judul (bukan full-slide), dengan fade ke transparan
     const textBlockClass =
       template.layout.coverPosition === "center"
-        ? "absolute inset-0 z-10 flex flex-col items-center justify-center p-14 text-center"
-        : "absolute inset-x-0 bottom-0 z-10 p-14 pb-16";
+        ? "absolute inset-x-10 top-1/2 z-10 flex -translate-y-1/2 flex-col px-10 py-14 text-center"
+        : "absolute inset-x-0 bottom-0 z-10 px-14 pb-16 pt-36";
 
     return (
       <SlideFrame
@@ -52,11 +53,6 @@ export const CoverSlide = forwardRef<HTMLDivElement, CoverSlideProps>(
           <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 via-zinc-900 to-black" />
         )}
 
-        <div
-          className="absolute inset-0"
-          style={{ background: template.colors.coverOverlay }}
-        />
-
         <SlideLogo logoSrc={logoSrc} />
 
         <div
@@ -65,6 +61,7 @@ export const CoverSlide = forwardRef<HTMLDivElement, CoverSlideProps>(
             textAlign: template.layout.coverAlign,
             alignItems:
               template.layout.coverAlign === "center" ? "center" : "stretch",
+            background: template.colors.coverOverlay,
           }}
         >
           {coverLabel.trim() ? (

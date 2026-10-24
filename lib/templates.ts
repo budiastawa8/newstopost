@@ -61,7 +61,7 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
       accent: "#5eead4",
       caption: "rgba(255,255,255,0.9)",
       coverOverlay:
-        "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.25) 100%)",
+        "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.62) 42%, rgba(0,0,0,0.22) 72%, transparent 100%)",
       photoVignette: [
         "radial-gradient(ellipse 85% 75% at 50% 50%, transparent 35%, rgba(0,0,0,0.45) 100%)",
         "linear-gradient(to bottom right, rgba(0,0,0,0.55) 0%, transparent 42%)",
@@ -97,7 +97,7 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
       accent: "#5eead4",
       caption: "rgba(255,255,255,0.9)",
       coverOverlay:
-        "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.35) 45%, rgba(0,0,0,0.25) 100%)",
+        "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.62) 42%, rgba(0,0,0,0.22) 72%, transparent 100%)",
       photoVignette: [
         "radial-gradient(ellipse 85% 75% at 50% 50%, transparent 35%, rgba(0,0,0,0.45) 100%)",
         "linear-gradient(to bottom right, rgba(0,0,0,0.55) 0%, transparent 42%)",
@@ -133,7 +133,7 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
       accent: "#f59e0b",
       caption: "rgba(250,250,249,0.92)",
       coverOverlay:
-        "linear-gradient(to top, rgba(28,25,23,0.92) 0%, rgba(28,25,23,0.4) 50%, rgba(28,25,23,0.2) 100%)",
+        "linear-gradient(to top, rgba(28,25,23,0.9) 0%, rgba(28,25,23,0.6) 45%, rgba(28,25,23,0.2) 75%, transparent 100%)",
       photoVignette: [
         "radial-gradient(ellipse 80% 70% at 50% 45%, transparent 40%, rgba(28,25,23,0.55) 100%)",
         "linear-gradient(to top, rgba(28,25,23,0.65) 0%, transparent 35%)",
@@ -168,7 +168,7 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
       accent: "#db2777",
       caption: "rgba(255,255,255,0.92)",
       coverOverlay:
-        "linear-gradient(135deg, rgba(9,9,11,0.55) 0%, rgba(219,39,119,0.35) 45%, rgba(9,9,11,0.85) 100%)",
+        "linear-gradient(to top, rgba(9,9,11,0.9) 0%, rgba(219,39,119,0.35) 38%, rgba(9,9,11,0.2) 72%, transparent 100%)",
       photoVignette: [
         "radial-gradient(ellipse 90% 80% at 50% 50%, transparent 30%, rgba(9,9,11,0.55) 100%)",
         "linear-gradient(to top right, rgba(219,39,119,0.35) 0%, transparent 40%)",
@@ -204,7 +204,7 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
       accent: "#2563eb",
       caption: "rgba(255,255,255,0.95)",
       coverOverlay:
-        "linear-gradient(to top, rgba(15,23,42,0.88) 0%, rgba(15,23,42,0.35) 48%, rgba(15,23,42,0.15) 100%)",
+        "linear-gradient(to top, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.45) 50%, rgba(15,23,42,0.12) 78%, transparent 100%)",
       photoVignette: [
         "radial-gradient(ellipse 85% 75% at 50% 50%, transparent 38%, rgba(15,23,42,0.5) 100%)",
         "linear-gradient(to bottom right, rgba(15,23,42,0.5) 0%, transparent 40%)",
