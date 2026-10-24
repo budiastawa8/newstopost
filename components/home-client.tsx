@@ -15,6 +15,7 @@ import { LogoUploader } from "@/components/logo-uploader";
 import { LogoutButton } from "@/components/logout-button";
 import { StoryPreview } from "@/components/story-preview";
 import { TemplatePicker } from "@/components/template-picker";
+import { TitleHighlightPicker } from "@/components/title-highlight-picker";
 import { UrlForm } from "@/components/url-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -158,6 +159,25 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
     }
   }
 
+  function handleTitleHighlightsChange(highlights: string[]) {
+    setSlides((prev) =>
+      prev.map((slide) =>
+        slide.kind === "cover"
+          ? { ...slide, titleHighlights: highlights }
+          : slide
+      )
+    );
+    setStoryAsset((prev) =>
+      prev ? { ...prev, titleHighlights: highlights } : prev
+    );
+  }
+
+  const coverSlide = slides.find((s) => s.kind === "cover");
+  const coverHighlights =
+    coverSlide && coverSlide.kind === "cover"
+      ? (coverSlide.titleHighlights ?? [])
+      : [];
+
   async function handleGenerate() {
     setError(null);
     setSlides([]);
@@ -225,7 +245,7 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
           ? {
               title: scrape.title,
               imageUrl: scrape.mainImage,
-              titleHighlights: summarize.titleHighlights ?? [],
+              titleHighlights: [],
             }
           : null
       );
@@ -366,6 +386,17 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
               <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                 {error}
               </div>
+            ) : null}
+
+            {sourceTitle && slides.length > 0 ? (
+              <TitleHighlightPicker
+                title={sourceTitle}
+                highlights={coverHighlights}
+                disabled={loading || exporting}
+                accentBg={template.colors.titleHighlightBg}
+                accentFg={template.colors.titleHighlightFg}
+                onChange={handleTitleHighlightsChange}
+              />
             ) : null}
 
             {slides.length > 0 ? (

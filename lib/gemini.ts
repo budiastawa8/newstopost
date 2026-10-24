@@ -5,7 +5,6 @@ import {
   type ParagraphCount,
 } from "@/lib/paragraph-count";
 import { isVercel, SUMMARIZE_BUDGET_MS } from "@/lib/runtime";
-import { filterTitleHighlights } from "@/lib/title-highlight";
 import type { SummarizeResult } from "@/lib/types";
 
 const MAX_TEXT_CHARS = isVercel ? 8_000 : 12_000;
@@ -54,8 +53,7 @@ function normalizeHashtag(tag: string): string | null {
 
 function validateSummarizePayload(
   value: unknown,
-  paragraphCount: ParagraphCount,
-  articleTitle?: string
+  paragraphCount: ParagraphCount
 ): SummarizeResult {
   if (!value || typeof value !== "object") {
     throw new Error("Respons Gemini bukan objek JSON.");
@@ -65,7 +63,6 @@ function validateSummarizePayload(
     points?: unknown;
     caption?: unknown;
     hashtags?: unknown;
-    titleHighlights?: unknown;
   };
 
   if (!Array.isArray(record.points)) {
@@ -104,12 +101,8 @@ function validateSummarizePayload(
     throw new Error(`Hashtag minimal ${MIN_HASHTAGS} buah.`);
   }
 
-  const titleHighlights = filterTitleHighlights(
-    record.titleHighlights,
-    articleTitle ?? ""
-  );
-
-  return { points, caption, hashtags: unique, titleHighlights };
+  // Highlight judul dipilih manual di UI (bukan Gemini)
+  return { points, caption, hashtags: unique, titleHighlights: [] };
 }
 
 function isRetryableGeminiError(error: unknown): boolean {
@@ -151,12 +144,8 @@ function buildPrompt(
     "   - Jangan cantumkan hashtag di dalam caption (hashtag terpisah).",
     "3) 5–12 hashtag relevan dengan topik artikel (campuran spesifik + umum).",
     "   - Format: diawali #, tanpa spasi, Bahasa Indonesia/Inggris yang wajar.",
-    "4) titleHighlights: 1–3 potongan teks dari JUDUL (bukan ringkasan) untuk di-highlight visual.",
-    "   - HARUS substring persis dari judul (salin apa adanya, boleh beda kapitalisasi).",
-    "   - Pilih frasa penting: nama, angka, isu inti — jangan seluruh judul.",
-    "   - Tiap item 1–5 kata. Jika judul pendek, boleh 1 item saja.",
     "",
-    `Output HANYA JSON murni: {"points":[${pointsExample}],"caption":"...","hashtags":["#a","#b"],"titleHighlights":["frasa"]}`,
+    `Output HANYA JSON murni: {"points":[${pointsExample}],"caption":"...","hashtags":["#a","#b"]}`,
     `Array points HARUS berisi tepat ${paragraphCount} string.`,
     title ? `Judul: ${title}` : "",
     "Teks berita:",
@@ -171,7 +160,6 @@ async function generateWithModel(
   modelId: string,
   prompt: string,
   paragraphCount: ParagraphCount,
-  articleTitle: string | undefined,
   deadline: number
 ): Promise<SummarizeResult> {
   const model = genAI.getGenerativeModel({
@@ -201,7 +189,7 @@ async function generateWithModel(
       });
       const raw = result.response.text();
       const parsed = extractJsonObject(raw);
-      return validateSummarizePayload(parsed, paragraphCount, articleTitle);
+      return validateSummarizePayload(parsed, paragraphCount);
     } catch (error) {
       lastError = error;
       if (!isRetryableGeminiError(error) || attempt === MAX_ATTEMPTS_PER_MODEL) {
@@ -241,7 +229,6 @@ export async function summarizeArticle(
         modelId,
         prompt,
         paragraphCount,
-        title,
         deadline
       );
     } catch (error) {
