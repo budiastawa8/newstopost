@@ -2,6 +2,8 @@
 
 Ubah URL berita jadi carousel Instagram/Facebook: scrape artikel, ringkas dengan Gemini, preview slide, unduh ZIP PNG.
 
+Juga ada mode **Desain bebas** — unggah foto, ketik quote/judul, pilih preset bergaya premium, unduh PNG.
+
 ## Stack
 
 - Next.js (App Router) + Tailwind + shadcn/ui

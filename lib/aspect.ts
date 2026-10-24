@@ -7,6 +7,9 @@ export function getAspectSize(ratio: AspectRatio): AspectSize {
   if (ratio === "1080x1080") {
     return { width: 1080, height: 1080 };
   }
+  if (ratio === "1080x1920") {
+    return { ...STORY_SIZE };
+  }
   return { width: 1080, height: 1350 };
 }
 

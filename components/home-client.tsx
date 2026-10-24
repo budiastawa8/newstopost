@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import {
   CarouselPreview,
@@ -12,7 +11,6 @@ import {
   PreviewSkeleton,
 } from "@/components/generate-progress";
 import { LogoUploader } from "@/components/logo-uploader";
-import { LogoutButton } from "@/components/logout-button";
 import { StoryPreview } from "@/components/story-preview";
 import { TemplatePicker } from "@/components/template-picker";
 import { TitleHighlightPicker } from "@/components/title-highlight-picker";
@@ -89,7 +87,14 @@ async function readError(response: Response): Promise<string> {
   return `HTTP ${response.status}. Cek /api/health dan log Vercel (Functions).`;
 }
 
-export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
+export function HomeClient({
+  showLogout = false,
+  embedded = false,
+}: {
+  showLogout?: boolean;
+  /** Jika true, header brand digambar AppShell. */
+  embedded?: boolean;
+}) {
   const [url, setUrl] = useState("");
   const [aspect, setAspect] = useState<AspectRatio>("1080x1350");
   const [paragraphCount, setParagraphCount] = useState<ParagraphCount>(
@@ -297,35 +302,8 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
     }
   }
 
-  return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:gap-8 sm:px-6 sm:py-10">
-      <header className="space-y-3 sm:space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <Image
-              src="/logo.png"
-              alt=""
-              width={40}
-              height={40}
-              priority
-              className="h-9 w-9 shrink-0 rounded-lg ring-1 ring-black/10 sm:h-10 sm:w-10 sm:rounded-xl"
-            />
-            <p className="truncate text-xs font-semibold uppercase tracking-[0.16em] text-teal-700 sm:text-sm sm:tracking-[0.18em]">
-              NewsToPost
-            </p>
-          </div>
-          {showLogout ? <LogoutButton /> : null}
-        </div>
-        <div className="space-y-1 sm:space-y-1.5">
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl">
-            Berita jadi carousel Instagram
-          </h1>
-          <p className="max-w-xl text-sm leading-relaxed text-zinc-500 sm:text-[15px]">
-            Tempel URL, generate ringkasan, unduh PNG siap unggah.
-          </p>
-        </div>
-      </header>
-
+  const content = (
+    <>
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-[360px_1fr]">
         <Card>
           <CardHeader className="space-y-1 p-4 sm:p-6">
@@ -469,6 +447,16 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
       {summarizeResult ? (
         <CaptionPanel summarize={summarizeResult} sourceUrl={sourceUrl} />
       ) : null}
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:gap-8 sm:px-6 sm:py-10">
+      {content}
     </div>
   );
 }
