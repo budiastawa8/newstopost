@@ -23,6 +23,7 @@ export function buildSlides(
       kind: "cover",
       title: scrape.title,
       imageUrl: scrape.mainImage,
+      titleHighlights: summarize.titleHighlights,
     },
     {
       kind: "summary",

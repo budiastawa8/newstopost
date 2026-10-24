@@ -11,6 +11,7 @@ export interface StoryPreviewProps {
   logoSrc: string | null;
   template: DesignTemplate;
   coverLabel: string;
+  titleHighlights?: string[] | null;
   generationKey: string;
 }
 
@@ -20,6 +21,7 @@ export function StoryPreview({
   logoSrc,
   template,
   coverLabel,
+  titleHighlights,
   generationKey,
 }: StoryPreviewProps) {
   const shellRef = useRef<HTMLDivElement>(null);
@@ -64,6 +66,7 @@ export function StoryPreview({
             logoSrc={logoSrc}
             template={template}
             coverLabel={coverLabel}
+            titleHighlights={titleHighlights}
             imageCacheKey={`${generationKey}::story-preview`}
           />
         </div>

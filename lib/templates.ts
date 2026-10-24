@@ -28,6 +28,9 @@ export interface DesignTemplate {
     caption: string;
     coverOverlay: string;
     photoVignette: string;
+    /** Latar marker untuk kata yang di-highlight di judul */
+    titleHighlightBg: string;
+    titleHighlightFg: string;
   };
   layout: {
     coverAlign: CoverTextAlign;
@@ -65,6 +68,8 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
       // Hanya sudut logo — foto tetap penuh terang
       photoVignette:
         "linear-gradient(to bottom right, rgba(0,0,0,0.4) 0%, transparent 32%)",
+      titleHighlightBg: "#5eead4",
+      titleHighlightFg: "#042f2e",
     },
     layout: {
       coverAlign: "left",
@@ -98,6 +103,8 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
         "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.62) 42%, rgba(0,0,0,0.22) 72%, transparent 100%)",
       photoVignette:
         "linear-gradient(to bottom right, rgba(0,0,0,0.4) 0%, transparent 32%)",
+      titleHighlightBg: "#5eead4",
+      titleHighlightFg: "#042f2e",
     },
     layout: {
       coverAlign: "left",
@@ -131,6 +138,8 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
         "linear-gradient(to top, rgba(28,25,23,0.9) 0%, rgba(28,25,23,0.6) 45%, rgba(28,25,23,0.2) 75%, transparent 100%)",
       photoVignette:
         "linear-gradient(to bottom right, rgba(28,25,23,0.38) 0%, transparent 32%)",
+      titleHighlightBg: "#fbbf24",
+      titleHighlightFg: "#1c1917",
     },
     layout: {
       coverAlign: "left",
@@ -164,6 +173,8 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
         "linear-gradient(to top, rgba(9,9,11,0.9) 0%, rgba(219,39,119,0.35) 38%, rgba(9,9,11,0.2) 72%, transparent 100%)",
       photoVignette:
         "linear-gradient(to bottom right, rgba(9,9,11,0.42) 0%, transparent 34%)",
+      titleHighlightBg: "#22d3ee",
+      titleHighlightFg: "#09090b",
     },
     layout: {
       coverAlign: "left",
@@ -197,6 +208,8 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
         "linear-gradient(to top, rgba(15,23,42,0.82) 0%, rgba(15,23,42,0.45) 50%, rgba(15,23,42,0.12) 78%, transparent 100%)",
       photoVignette:
         "linear-gradient(to bottom right, rgba(15,23,42,0.36) 0%, transparent 32%)",
+      titleHighlightBg: "#fde047",
+      titleHighlightFg: "#0f172a",
     },
     layout: {
       coverAlign: "center",

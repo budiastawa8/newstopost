@@ -49,9 +49,17 @@ export async function captureStoryToPngDataUrl(options: {
   generationKey: string;
   template: DesignTemplate;
   coverLabel: string;
+  titleHighlights?: string[] | null;
 }): Promise<string> {
-  const { title, imageUrl, logoSrc, generationKey, template, coverLabel } =
-    options;
+  const {
+    title,
+    imageUrl,
+    logoSrc,
+    generationKey,
+    template,
+    coverLabel,
+    titleHighlights,
+  } = options;
 
   if (typeof document !== "undefined" && document.fonts?.ready) {
     await document.fonts.ready;
@@ -96,6 +104,7 @@ export async function captureStoryToPngDataUrl(options: {
           logoSrc={readyLogo}
           template={template}
           coverLabel={coverLabel}
+          titleHighlights={titleHighlights}
           ref={(el) => {
             nodeBox.current = el;
           }}

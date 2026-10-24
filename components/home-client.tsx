@@ -64,6 +64,7 @@ import type {
 interface StoryAsset {
   title: string;
   imageUrl: string | null;
+  titleHighlights: string[];
 }
 
 type GeneratePhase =
@@ -149,7 +150,11 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
     }
     const cover = slides.find((s) => s.kind === "cover");
     if (cover && cover.kind === "cover") {
-      setStoryAsset({ title: cover.title, imageUrl: cover.imageUrl });
+      setStoryAsset({
+        title: cover.title,
+        imageUrl: cover.imageUrl,
+        titleHighlights: cover.titleHighlights ?? [],
+      });
     }
   }
 
@@ -217,7 +222,11 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
       setSlides(nextSlides);
       setStoryAsset(
         includeStory
-          ? { title: scrape.title, imageUrl: scrape.mainImage }
+          ? {
+              title: scrape.title,
+              imageUrl: scrape.mainImage,
+              titleHighlights: summarize.titleHighlights ?? [],
+            }
           : null
       );
       setSummarizeResult(summarize);
@@ -250,6 +259,7 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
           generationKey: generationKey || "story",
           template,
           coverLabel: normalizeCoverLabel(coverLabel),
+          titleHighlights: storyAsset.titleHighlights,
         });
       }
 
@@ -415,6 +425,7 @@ export function HomeClient({ showLogout = false }: { showLogout?: boolean }) {
                     logoSrc={logoSrc}
                     template={template}
                     coverLabel={normalizeCoverLabel(coverLabel)}
+                    titleHighlights={storyAsset.titleHighlights}
                     generationKey={generationKey || sourceUrl || "preview"}
                   />
                 ) : null}

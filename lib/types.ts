@@ -23,12 +23,15 @@ export interface SummarizeResult {
   caption: string;
   /** Hashtag terkait (dengan #) */
   hashtags: string[];
+  /** 1–3 potongan dari judul untuk di-highlight di cover/story */
+  titleHighlights: string[];
 }
 
 export interface CoverSlideModel {
   kind: "cover";
   title: string;
   imageUrl: string | null;
+  titleHighlights?: string[];
 }
 
 export interface SummarySlideModel {

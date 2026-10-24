@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef } from "react";
+import { HighlightedTitle } from "@/components/slides/highlighted-title";
 import { SlideFrame } from "@/components/slides/slide-frame";
 import { SlideLogo } from "@/components/slides/slide-logo";
 import { STORY_SIZE, proxiedImageUrl } from "@/lib/aspect";
@@ -12,13 +13,22 @@ export interface StorySlideProps {
   logoSrc: string | null;
   template: DesignTemplate;
   coverLabel: string;
+  titleHighlights?: string[] | null;
   imageCacheKey?: string;
 }
 
 /** Satu frame 9:16 (1080×1920) untuk IG/FB Story — reuse data cover. */
 export const StorySlide = forwardRef<HTMLDivElement, StorySlideProps>(
   function StorySlide(
-    { title, imageUrl, logoSrc, template, coverLabel, imageCacheKey },
+    {
+      title,
+      imageUrl,
+      logoSrc,
+      template,
+      coverLabel,
+      titleHighlights,
+      imageCacheKey,
+    },
     ref
   ) {
     const imageSrc = proxiedImageUrl(imageUrl, imageCacheKey);
@@ -72,7 +82,11 @@ export const StorySlide = forwardRef<HTMLDivElement, StorySlideProps>(
               {coverLabel.trim()}
             </p>
           ) : null}
-          <h2
+          <HighlightedTitle
+            title={title}
+            highlights={titleHighlights}
+            highlightBg={template.colors.titleHighlightBg}
+            highlightFg={template.colors.titleHighlightFg}
             className="font-bold leading-tight text-white"
             style={{
               fontSize: titleSize,
@@ -80,9 +94,7 @@ export const StorySlide = forwardRef<HTMLDivElement, StorySlideProps>(
               maxWidth:
                 template.layout.coverAlign === "center" ? "94%" : undefined,
             }}
-          >
-            {title}
-          </h2>
+          />
         </div>
       </SlideFrame>
     );

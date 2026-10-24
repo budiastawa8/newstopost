@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef } from "react";
+import { HighlightedTitle } from "@/components/slides/highlighted-title";
 import { SlideFrame } from "@/components/slides/slide-frame";
 import { SlideLogo } from "@/components/slides/slide-logo";
 import { proxiedImageUrl } from "@/lib/aspect";
@@ -79,7 +80,11 @@ export const CoverSlide = forwardRef<HTMLDivElement, CoverSlideProps>(
               {coverLabel.trim()}
             </p>
           ) : null}
-          <h2
+          <HighlightedTitle
+            title={slide.title}
+            highlights={slide.titleHighlights}
+            highlightBg={template.colors.titleHighlightBg}
+            highlightFg={template.colors.titleHighlightFg}
             className="font-bold leading-tight text-white"
             style={{
               fontSize: titleSize,
@@ -87,9 +92,7 @@ export const CoverSlide = forwardRef<HTMLDivElement, CoverSlideProps>(
               maxWidth:
                 template.layout.coverAlign === "center" ? "92%" : undefined,
             }}
-          >
-            {slide.title}
-          </h2>
+          />
         </div>
       </SlideFrame>
     );
