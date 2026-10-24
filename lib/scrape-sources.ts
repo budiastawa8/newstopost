@@ -1,11 +1,13 @@
 import * as cheerio from "cheerio";
+import { FETCH_FAST_MS, FETCH_HTML_MS } from "@/lib/runtime";
 import type { ScrapeResult } from "@/lib/types";
 
 const SKIP_IMAGE_PATTERN =
   /logo|avatar|sprite|icon|emoji|pixel|tracking|1x1|spacer|badge|button|share|facebook|twitter|whatsapp|instagram|widgets\.js/i;
 
 const MAX_IMAGES = 10;
-const FAST_TIMEOUT_MS = 6_000;
+export const FAST_TIMEOUT_MS = FETCH_FAST_MS;
+export const HTML_TIMEOUT_MS = FETCH_HTML_MS;
 
 export const BROWSER_HEADERS: Record<string, string> = {
   "User-Agent":
@@ -116,7 +118,7 @@ export function extractMainImage(html: string, baseUrl: string): string | null {
 export async function fetchText(
   url: string,
   headers: Record<string, string>,
-  timeoutMs = 15_000
+  timeoutMs = HTML_TIMEOUT_MS
 ): Promise<{ status: number; text: string; contentType: string | null }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);

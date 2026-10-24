@@ -1,18 +1,24 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { isVercel, SUMMARIZE_BUDGET_MS } from "@/lib/runtime";
 import type { SummarizeResult } from "@/lib/types";
 
-const MAX_TEXT_CHARS = 12_000;
+const MAX_TEXT_CHARS = isVercel ? 8_000 : 12_000;
 const REQUIRED_POINTS = 3;
 const MIN_HASHTAGS = 5;
 const MAX_HASHTAGS = 12;
-const MAX_ATTEMPTS_PER_MODEL = 3;
+/** Di Vercel retry panjang = 504 FUNCTION_INVOCATION_TIMEOUT. */
+const MAX_ATTEMPTS_PER_MODEL = isVercel ? 2 : 3;
+const PER_CALL_TIMEOUT_MS = isVercel ? 18_000 : 45_000;
 
-/** Primary + fallback saat model sedang overload (503 / high demand) */
+/**
+ * Urutan model: hindari 3.8 sebagai default (sering high-demand → retry lama).
+ * Override dengan GEMINI_MODEL di env.
+ */
 const MODEL_CANDIDATES = [
   process.env.GEMINI_MODEL?.trim(),
-  "gemini-3.8-flash",
   "gemini-3.6-flash",
   "gemini-3.5-flash-lite",
+  ...(isVercel ? [] : ["gemini-3.8-flash"]),
 ].filter((id, index, arr): id is string => Boolean(id) && arr.indexOf(id) === index);
 
 function getApiKey(): string {
@@ -92,7 +98,7 @@ function validateSummarizePayload(value: unknown): SummarizeResult {
 function isRetryableGeminiError(error: unknown): boolean {
   const message =
     error instanceof Error ? error.message : String(error ?? "");
-  return /503|429|high demand|unavailable|resource.?exhausted|try again|overloaded|quota/i.test(
+  return /503|429|high demand|unavailable|resource.?exhausted|try again|overloaded|quota|timeout|aborted/i.test(
     message
   );
 }
@@ -101,6 +107,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function remainingMs(deadline: number): number {
+  return Math.max(0, deadline - Date.now());
 }
 
 function buildPrompt(truncated: string, title?: string): string {
@@ -128,7 +138,8 @@ function buildPrompt(truncated: string, title?: string): string {
 async function generateWithModel(
   genAI: GoogleGenerativeAI,
   modelId: string,
-  prompt: string
+  prompt: string,
+  deadline: number
 ): Promise<SummarizeResult> {
   const model = genAI.getGenerativeModel({
     model: modelId,
@@ -141,8 +152,20 @@ async function generateWithModel(
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS_PER_MODEL; attempt += 1) {
+    const left = remainingMs(deadline);
+    if (left < 2_000) {
+      throw Object.assign(
+        new Error(
+          "Waktu proses Gemini habis (batas Vercel). Coba lagi, atau set GEMINI_MODEL=gemini-3.5-flash-lite."
+        ),
+        { status: 504 }
+      );
+    }
+
     try {
-      const result = await model.generateContent(prompt);
+      const result = await model.generateContent(prompt, {
+        timeout: Math.min(PER_CALL_TIMEOUT_MS, left - 500),
+      });
       const raw = result.response.text();
       const parsed = extractJsonObject(raw);
       return validateSummarizePayload(parsed);
@@ -151,8 +174,11 @@ async function generateWithModel(
       if (!isRetryableGeminiError(error) || attempt === MAX_ATTEMPTS_PER_MODEL) {
         throw error;
       }
-      // Backoff: 1s, 2s, 4s (+ jitter kecil)
-      const delay = 1000 * 2 ** (attempt - 1) + Math.floor(Math.random() * 400);
+      const delay = Math.min(
+        remainingMs(deadline) - 1_500,
+        400 * 2 ** (attempt - 1) + Math.floor(Math.random() * 200)
+      );
+      if (delay < 200) throw error;
       await sleep(delay);
     }
   }
@@ -168,15 +194,20 @@ export async function summarizeArticle(
   const truncated = text.slice(0, MAX_TEXT_CHARS);
   const genAI = new GoogleGenerativeAI(apiKey);
   const prompt = buildPrompt(truncated, title);
+  const deadline = Date.now() + SUMMARIZE_BUDGET_MS;
 
   let lastError: unknown;
 
   for (const modelId of MODEL_CANDIDATES) {
+    if (remainingMs(deadline) < 2_000) break;
     try {
-      return await generateWithModel(genAI, modelId, prompt);
+      return await generateWithModel(genAI, modelId, prompt, deadline);
     } catch (error) {
       lastError = error;
-      // Coba model berikutnya hanya jika overload/rate-limit
+      if ((error as { status?: number }).status === 504) {
+        throw error;
+      }
+      // Coba model berikutnya hanya jika overload/rate-limit/timeout
       if (!isRetryableGeminiError(error)) {
         break;
       }
@@ -201,7 +232,7 @@ export async function summarizeArticle(
   if (isRetryableGeminiError(lastError)) {
     throw Object.assign(
       new Error(
-        "Layanan Gemini sedang padat (503). Sistem sudah mencoba ulang & model cadangan. Silakan generate lagi sebentar."
+        "Layanan Gemini sedang padat atau lambat. Coba lagi, atau di Vercel set GEMINI_MODEL=gemini-3.5-flash-lite."
       ),
       { status: 503 }
     );

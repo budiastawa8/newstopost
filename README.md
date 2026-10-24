@@ -30,7 +30,7 @@ Buka [http://localhost:3000](http://localhost:3000).
 2. Di [vercel.com/new](https://vercel.com/new): **Import** repo → Framework **Next.js** (otomatis).
 3. **Environment Variables** (Production + Preview):
    - `GEMINI_API_KEY` = key Anda
-   - opsional `GEMINI_MODEL` = `gemini-3.6-flash` jika 3.8 sering 503
+   - disarankan `GEMINI_MODEL` = `gemini-3.5-flash-lite` (lebih cepat, jarang timeout di Hobby)
 4. Deploy. Setelah live, Generate memakai route `/api/scrape` dan `/api/summarize` (timeout hingga 60 detik).
 5. Cek cepat: buka `https://<domain-anda>/api/health` — harus `geminiKey: "configured"`.
 

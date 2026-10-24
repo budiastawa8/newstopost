@@ -1,6 +1,7 @@
 import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
 import { unstable_cache } from "next/cache";
+import { isVercel } from "@/lib/runtime";
 import {
   getCachedScrape,
   normalizeCacheKey,
@@ -110,7 +111,7 @@ async function scrapeArticleFresh(url: string): Promise<ScrapeResult> {
   const fast = await scrapeViaFastSources(url);
   if (fast) return fast;
 
-  // 2) Fallback HTML + Readability
+  // 2) Fallback HTML + Readability (satu kali — hindari retry berantai di Vercel)
   const htmlHeaders = {
     ...BROWSER_HEADERS,
     Referer: "https://www.google.com/",
@@ -121,10 +122,11 @@ async function scrapeArticleFresh(url: string): Promise<ScrapeResult> {
   try {
     htmlResult = await fetchText(url, htmlHeaders);
   } catch (error) {
-    const again = await scrapeViaFastSources(url).catch(() => null);
-    if (again) return again;
     if (error instanceof Error && error.name === "AbortError") {
-      throw statusError("Timeout saat mengambil halaman berita.", 502);
+      throw statusError(
+        "Timeout saat mengambil halaman berita. Coba URL WordPress/RSS, atau generate lagi.",
+        504
+      );
     }
     throw statusError("Gagal mengambil halaman berita.", 502);
   }
@@ -132,8 +134,6 @@ async function scrapeArticleFresh(url: string): Promise<ScrapeResult> {
   const blocked = isCloudflareChallenge(htmlResult.text, htmlResult.status);
 
   if (!htmlResult.status || htmlResult.status >= 400 || blocked) {
-    // HTML kena CF — coba lagi RSS dengan hint link alternate dari HTML challenge? biasanya tidak berguna.
-    // Tetap retry fast sources sekali lagi (kadang race).
     const again = await scrapeViaFastSources(url, htmlResult.text).catch(
       () => null
     );
@@ -148,11 +148,6 @@ async function scrapeArticleFresh(url: string): Promise<ScrapeResult> {
   try {
     return parseWithReadability(htmlResult.text, url);
   } catch (error) {
-    const again = await scrapeViaFastSources(url, htmlResult.text).catch(
-      () => null
-    );
-    if (again) return again;
-
     if ((error as { status?: number }).status) {
       throw error;
     }
@@ -186,12 +181,18 @@ export async function scrapeArticle(url: string): Promise<ScrapeResult> {
   const memoryHit = getCachedScrape(key);
   if (memoryHit) return memoryHit;
 
+  // Di Vercel skip unstable_cache (overhead + perilaku dingin) — langsung fresh
+  if (isVercel) {
+    const fresh = await scrapeArticleFresh(key);
+    setCachedScrape(key, fresh);
+    return fresh;
+  }
+
   try {
     const result = await scrapeWithNextCache(key);
     setCachedScrape(key, result);
     return { ...result, cacheHit: false };
   } catch (error) {
-    // Jika Next data cache gagal/aneh, fallback langsung
     if (
       error instanceof Error &&
       /cache|dynamic|static/i.test(error.message)
