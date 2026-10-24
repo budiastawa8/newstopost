@@ -5,7 +5,11 @@ import {
   type ParagraphCount,
 } from "@/lib/paragraph-count";
 import { isVercel, SUMMARIZE_BUDGET_MS } from "@/lib/runtime";
-import type { SummarizeResult } from "@/lib/types";
+import type {
+  FreeDesignCopyResult,
+  FreeDesignCopyTone,
+  SummarizeResult,
+} from "@/lib/types";
 
 const MAX_TEXT_CHARS = isVercel ? 8_000 : 12_000;
 const MIN_HASHTAGS = 5;
@@ -276,6 +280,213 @@ export async function summarizeArticle(
         message.includes("JSON")
         ? `Respons Gemini tidak valid: ${message}`
         : "Gagal merangkum berita dengan Gemini."
+    ),
+    { status: 502 }
+  );
+}
+
+const FREE_COPY_BRIEF_MAX = 500;
+
+function normalizeFreeCopyTone(value: unknown): FreeDesignCopyTone {
+  if (
+    value === "formal" ||
+    value === "santai" ||
+    value === "promo" ||
+    value === "natural"
+  ) {
+    return value;
+  }
+  return "natural";
+}
+
+function validateFreeDesignCopyPayload(value: unknown): FreeDesignCopyResult {
+  if (!value || typeof value !== "object") {
+    throw new Error("Respons Gemini bukan objek JSON.");
+  }
+  const record = value as { headline?: unknown; subtext?: unknown };
+  const headline =
+    typeof record.headline === "string" ? record.headline.trim() : "";
+  if (headline.length < 4) {
+    throw new Error("Headline terlalu pendek atau kosong.");
+  }
+  const subtext =
+    typeof record.subtext === "string" ? record.subtext.trim() : "";
+  return {
+    headline: headline.slice(0, 160),
+    subtext: subtext.slice(0, 120),
+  };
+}
+
+function buildFreeDesignCopyPrompt(input: {
+  brief: string;
+  category: "quote" | "poster" | "promo";
+  designName?: string;
+  tone: FreeDesignCopyTone;
+}): string {
+  const categoryGuide =
+    input.category === "quote"
+      ? [
+          "Kategori QUOTE: headline = 1 kalimat quote/inspiratif (boleh tanpa tanda kutip).",
+          "Maksimal ~90 karakter. subtext = kredit/atribusi atau konteks singkat (boleh kosong).",
+        ].join(" ")
+      : input.category === "promo"
+        ? [
+            "Kategori PROMO: headline = penawaran kuat & jelas (diskon/manfaat).",
+            "Maksimal ~60 karakter. subtext = CTA atau detail singkat (mis. periode, cara klaim).",
+          ].join(" ")
+        : [
+            "Kategori POSTER: headline = judul impactful singkat.",
+            "Maksimal ~70 karakter. subtext = 1 baris pendukung (boleh kosong).",
+          ].join(" ");
+
+  const toneGuide =
+    input.tone === "formal"
+      ? "Tone: formal, sopan, profesional."
+      : input.tone === "santai"
+        ? "Tone: santai, ramah, conversational."
+        : input.tone === "promo"
+          ? "Tone: salesy tapi tidak berlebihan, ajakan jelas."
+          : "Tone: natural, jelas, enak dibaca.";
+
+  return [
+    "Kamu copywriter media sosial untuk slide Instagram/Facebook (Bahasa Indonesia).",
+    "Dari brief pengguna, buat teks siap tempel ke template desain.",
+    categoryGuide,
+    toneGuide,
+    "Tanpa emoji, tanpa markdown, tanpa hashtag.",
+    'Output HANYA JSON murni: {"headline":"...","subtext":"..."}',
+    input.designName ? `Nama desain: ${input.designName}` : "",
+    `Brief:\n${input.brief}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+async function generateFreeCopyWithModel(
+  genAI: GoogleGenerativeAI,
+  modelId: string,
+  prompt: string,
+  deadline: number
+): Promise<FreeDesignCopyResult> {
+  const model = genAI.getGenerativeModel({
+    model: modelId,
+    generationConfig: {
+      temperature: 0.7,
+      responseMimeType: "application/json",
+    },
+  });
+
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS_PER_MODEL; attempt += 1) {
+    const left = remainingMs(deadline);
+    if (left < 2_000) {
+      throw Object.assign(
+        new Error(
+          "Waktu proses Gemini habis (batas Vercel). Coba lagi sebentar."
+        ),
+        { status: 504 }
+      );
+    }
+
+    try {
+      const result = await model.generateContent(prompt, {
+        timeout: Math.min(PER_CALL_TIMEOUT_MS, left - 500),
+      });
+      const raw = result.response.text();
+      const parsed = extractJsonObject(raw);
+      return validateFreeDesignCopyPayload(parsed);
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableGeminiError(error) || attempt === MAX_ATTEMPTS_PER_MODEL) {
+        throw error;
+      }
+      const delay = Math.min(
+        remainingMs(deadline) - 1_500,
+        400 * 2 ** (attempt - 1) + Math.floor(Math.random() * 200)
+      );
+      if (delay < 200) throw error;
+      await sleep(delay);
+    }
+  }
+
+  throw lastError;
+}
+
+export async function generateFreeDesignCopy(input: {
+  brief: string;
+  category: "quote" | "poster" | "promo";
+  designName?: string;
+  tone?: FreeDesignCopyTone;
+}): Promise<FreeDesignCopyResult> {
+  const brief = input.brief.trim().slice(0, FREE_COPY_BRIEF_MAX);
+  if (brief.length < 8) {
+    throw Object.assign(
+      new Error("Brief minimal 8 karakter."),
+      { status: 400 }
+    );
+  }
+
+  const tone = normalizeFreeCopyTone(input.tone);
+  const apiKey = getApiKey();
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const prompt = buildFreeDesignCopyPrompt({
+    brief,
+    category: input.category,
+    designName: input.designName?.trim() || undefined,
+    tone,
+  });
+  const deadline = Date.now() + SUMMARIZE_BUDGET_MS;
+
+  let lastError: unknown;
+
+  for (const modelId of MODEL_CANDIDATES) {
+    if (remainingMs(deadline) < 2_000) break;
+    try {
+      return await generateFreeCopyWithModel(genAI, modelId, prompt, deadline);
+    } catch (error) {
+      lastError = error;
+      if ((error as { status?: number }).status === 504) {
+        throw error;
+      }
+      if ((error as { status?: number }).status === 400) {
+        throw error;
+      }
+      if (!isRetryableGeminiError(error)) {
+        break;
+      }
+    }
+  }
+
+  if ((lastError as { status?: number })?.status) {
+    throw lastError;
+  }
+
+  const message =
+    lastError instanceof Error
+      ? lastError.message
+      : "Gagal memanggil Gemini.";
+
+  if (/API key|permission|401|403/i.test(message)) {
+    throw Object.assign(new Error("Autentikasi Gemini gagal."), {
+      status: 401,
+    });
+  }
+
+  if (isRetryableGeminiError(lastError)) {
+    throw Object.assign(
+      new Error(
+        "Layanan Gemini sedang padat atau lambat. Coba lagi sebentar."
+      ),
+      { status: 503 }
+    );
+  }
+
+  throw Object.assign(
+    new Error(
+      message.includes("Headline") || message.includes("JSON")
+        ? `Respons Gemini tidak valid: ${message}`
+        : "Gagal membuat copy desain dengan Gemini."
     ),
     { status: 502 }
   );

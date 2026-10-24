@@ -24,13 +24,25 @@ import {
   type FreeDesignId,
 } from "@/lib/free-designs";
 import { loadStoredLogo } from "@/lib/logo-storage";
-import type { AspectRatio } from "@/lib/types";
+import type {
+  ApiErrorBody,
+  AspectRatio,
+  FreeDesignCopyResult,
+  FreeDesignCopyTone,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const ASPECT_OPTIONS: { value: AspectRatio; label: string }[] = [
   { value: "1080x1350", label: "4:5" },
   { value: "1080x1080", label: "1:1" },
   { value: "1080x1920", label: "9:16" },
+];
+
+const TONE_OPTIONS: { value: FreeDesignCopyTone; label: string }[] = [
+  { value: "natural", label: "Natural" },
+  { value: "formal", label: "Formal" },
+  { value: "santai", label: "Santai" },
+  { value: "promo", label: "Promo" },
 ];
 
 function downloadPng(dataUrl: string, filename: string) {
@@ -40,19 +52,36 @@ function downloadPng(dataUrl: string, filename: string) {
   link.click();
 }
 
+async function readError(response: Response): Promise<string> {
+  const raw = await response.text();
+  try {
+    const data = JSON.parse(raw) as ApiErrorBody;
+    if (data.error?.trim()) return data.error;
+  } catch {
+    // bukan JSON
+  }
+  const snippet = raw.replace(/\s+/g, " ").trim().slice(0, 160);
+  if (snippet) return `HTTP ${response.status}: ${snippet}`;
+  return `HTTP ${response.status}. Coba lagi sebentar.`;
+}
+
 export function FreeDesignClient() {
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
   const [designId, setDesignId] = useState<FreeDesignId>("quote-noir");
   const [aspect, setAspect] = useState<AspectRatio>("1080x1350");
+  const [brief, setBrief] = useState("");
+  const [tone, setTone] = useState<FreeDesignCopyTone>("natural");
   const [headline, setHeadline] = useState("");
   const [subtext, setSubtext] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [previewWidth, setPreviewWidth] = useState(320);
   const shellRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const busy = exporting || generating;
 
   const design = getFreeDesign(designId);
   const size = useMemo(() => getAspectSize(aspect), [aspect]);
@@ -113,6 +142,40 @@ export function FreeDesignClient() {
     }
   }
 
+  async function handleGenerateCopy() {
+    if (brief.trim().length < 8) {
+      setError("Tulis brief singkat dulu (minimal 8 karakter).");
+      return;
+    }
+    setError(null);
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/free-design-copy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brief: brief.trim(),
+          category: design.category,
+          designName: design.name,
+          tone,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(await readError(res));
+      }
+      const data = (await res.json()) as FreeDesignCopyResult;
+      setHeadline(data.headline);
+      setSubtext(data.subtext);
+      setHighlights([]);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Gagal generate copy dengan AI."
+      );
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   async function handleDownload() {
     if (!headline.trim()) {
       setError("Isi judul atau quote dulu.");
@@ -150,13 +213,13 @@ export function FreeDesignClient() {
         <CardHeader className="space-y-1 p-4 sm:p-6">
           <CardTitle>Desain bebas</CardTitle>
           <CardDescription>
-            Unggah foto, ketik teks, pilih desain premium, unduh PNG.
+            Brief singkat → AI isi teks, pilih desain, unduh PNG.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
           <LogoUploader
             logoSrc={logoSrc}
-            disabled={exporting}
+            disabled={busy}
             onLogoChange={setLogoSrc}
             onError={setError}
           />
@@ -174,7 +237,7 @@ export function FreeDesignClient() {
               <Button
                 type="button"
                 variant="outline"
-                disabled={exporting}
+                disabled={busy}
                 onClick={() => fileRef.current?.click()}
               >
                 {imageUrl ? "Ganti foto" : "Unggah foto"}
@@ -183,7 +246,7 @@ export function FreeDesignClient() {
                 <Button
                   type="button"
                   variant="ghost"
-                  disabled={exporting}
+                  disabled={busy}
                   onClick={() => setImageUrl(null)}
                 >
                   Hapus foto
@@ -197,7 +260,7 @@ export function FreeDesignClient() {
 
           <FreeDesignPicker
             value={designId}
-            disabled={exporting}
+            disabled={busy}
             onChange={handleDesignChange}
           />
 
@@ -208,7 +271,7 @@ export function FreeDesignClient() {
                 <button
                   key={option.value}
                   type="button"
-                  disabled={exporting}
+                  disabled={busy}
                   onClick={() => setAspect(option.value)}
                   className={cn(
                     "rounded-md border px-3 py-2 text-sm transition-colors",
@@ -223,15 +286,65 @@ export function FreeDesignClient() {
             </div>
           </div>
 
+          <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50/80 p-3">
+            <Label htmlFor="free-brief">Brief untuk AI</Label>
+            <textarea
+              id="free-brief"
+              rows={3}
+              value={brief}
+              disabled={busy}
+              onChange={(e) => setBrief(e.target.value)}
+              placeholder={
+                design.category === "promo"
+                  ? "Mis. Kopi susu oat, diskon 30% weekend, klaim di kasir"
+                  : design.category === "quote"
+                    ? "Mis. Motivasi pagi untuk tim sales yang sedang buru target"
+                    : "Mis. Soft launch cafe baru di Sanur, fokus suasana pantai"
+              }
+              maxLength={500}
+              className="flex w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 disabled:opacity-50"
+            />
+            <div className="space-y-2">
+              <Label>Tone</Label>
+              <div className="flex flex-wrap gap-2">
+                {TONE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setTone(option.value)}
+                    className={cn(
+                      "rounded-md border px-2.5 py-1.5 text-xs transition-colors",
+                      tone === option.value
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={busy || brief.trim().length < 8}
+              onClick={handleGenerateCopy}
+            >
+              {generating ? "Menulis copy…" : "Generate dengan AI"}
+            </Button>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="free-headline">Judul / quote</Label>
             <textarea
               id="free-headline"
               rows={3}
               value={headline}
-              disabled={exporting}
+              disabled={busy}
               onChange={(e) => setHeadline(e.target.value)}
-              placeholder="Tulis teks utama di sini…"
+              placeholder="Tulis manual atau generate dari brief…"
               className="flex w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 disabled:opacity-50"
             />
           </div>
@@ -245,7 +358,7 @@ export function FreeDesignClient() {
             <Input
               id="free-sub"
               value={subtext}
-              disabled={exporting}
+              disabled={busy}
               onChange={(e) => setSubtext(e.target.value)}
               placeholder={
                 design.category === "promo"
@@ -260,7 +373,7 @@ export function FreeDesignClient() {
             <TitleHighlightPicker
               title={headline}
               highlights={highlights}
-              disabled={exporting}
+              disabled={busy}
               accentBg={design.colors.highlightBg}
               accentFg={design.colors.highlightFg}
               onChange={setHighlights}
@@ -276,7 +389,7 @@ export function FreeDesignClient() {
           <Button
             type="button"
             className="w-full"
-            disabled={exporting || !headline.trim()}
+            disabled={busy || !headline.trim()}
             onClick={handleDownload}
           >
             {exporting ? "Menyiapkan PNG…" : "Download PNG"}

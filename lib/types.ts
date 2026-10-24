@@ -58,6 +58,25 @@ export interface SummarizeRequestBody {
   paragraphCount?: ParagraphCount;
 }
 
+/** Tone copy untuk Desain bebas (Generate AI). */
+export type FreeDesignCopyTone =
+  | "natural"
+  | "formal"
+  | "santai"
+  | "promo";
+
+export interface FreeDesignCopyRequestBody {
+  brief: string;
+  category: "quote" | "poster" | "promo";
+  designName?: string;
+  tone?: FreeDesignCopyTone;
+}
+
+export interface FreeDesignCopyResult {
+  headline: string;
+  subtext: string;
+}
+
 export interface ApiErrorBody {
   error: string;
 }
