@@ -1,0 +1,5 @@
+- Framework: Next.js App Router (TypeScript)
+- Styling: Tailwind CSS & shadcn/ui
+- Jangan pernah menyimpan API Key (OpenAI/Gemini/Supabase) langsung di dalam kode (hardcode).
+- Selalu sertakan error handling pada API route scraping dan rendering gambar.
+- Pastikan semua tipe data TypeScript terdefinisi dengan jelas.

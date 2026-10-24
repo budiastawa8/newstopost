@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 40" fill="none">
+  <rect width="180" height="40" rx="8" fill="#0F172A"/>
+  <path d="M18 10h8l6 20h-7l-1.2-4H20.2L19 30h-7l6-20zm3.4 10h4.2L24 14.5 21.4 20z" fill="#F8FAFC"/>
+  <text x="42" y="26" fill="#F8FAFC" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700">NewsToPost</text>
+</svg>
