@@ -327,6 +327,19 @@ export function HomeClient({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+            <UrlForm
+              url={url}
+              aspect={aspect}
+              paragraphCount={paragraphCount}
+              includeStory={includeStory}
+              loading={loading || exporting}
+              onUrlChange={setUrl}
+              onAspectChange={setAspect}
+              onParagraphCountChange={handleParagraphCountChange}
+              onIncludeStoryChange={handleIncludeStoryChange}
+              onSubmit={handleGenerate}
+            />
+
             <LogoUploader
               logoSrc={logoSrc}
               disabled={loading || exporting}
@@ -356,19 +369,6 @@ export function HomeClient({
                 menyembunyikan.
               </p>
             </div>
-
-            <UrlForm
-              url={url}
-              aspect={aspect}
-              paragraphCount={paragraphCount}
-              includeStory={includeStory}
-              loading={loading || exporting}
-              onUrlChange={setUrl}
-              onAspectChange={setAspect}
-              onParagraphCountChange={handleParagraphCountChange}
-              onIncludeStoryChange={handleIncludeStoryChange}
-              onSubmit={handleGenerate}
-            />
 
             {phase !== "idle" ? (
               <GenerateProgress phase={phase} scrapeMeta={scrapeMeta} />
