@@ -395,8 +395,9 @@ export function FreeDesignClient() {
               ) : null}
             </div>
             <p className="text-xs text-zinc-500">
-              Imagen diganti Gemini image (Nano Banana). Tanpa teks di dalam
-              gambar — teks ditambahkan di editor.
+              Deskripsikan suasana latar (bukan teks poster). Lalu klik{" "}
+              <span className="font-medium text-zinc-700">Generate latar AI</span>
+              — mengetik saja tidak membuat gambar.
               {imageModel ? ` · Model: ${imageModel}` : null}
             </p>
           </div>

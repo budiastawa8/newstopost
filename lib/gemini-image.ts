@@ -75,7 +75,7 @@ function extractImageDataUrl(interaction: {
 }): string {
   const direct = interaction.output_image;
   if (direct?.data) {
-    const mime = direct.mime_type?.trim() || "image/png";
+    const mime = direct.mime_type?.trim() || "image/jpeg";
     return `data:${mime};base64,${direct.data}`;
   }
 
@@ -127,7 +127,8 @@ async function generateWithModel(
     input: prompt,
     response_format: {
       type: "image",
-      mime_type: "image/png",
+      // Interactions API saat ini hanya menerima JPEG untuk image mime_type.
+      mime_type: "image/jpeg",
       aspect_ratio: aspectRatio,
       // 1K: cukup untuk IG 1080px dan lebih cepat di Vercel
       image_size: "1K",
@@ -207,6 +208,15 @@ export async function generateBackgroundImage(input: {
         "Model gambar Gemini tidak tersedia untuk API key ini. Cek akses image generation di Google AI Studio, atau set GEMINI_IMAGE_MODEL."
       ),
       { status: 502 }
+    );
+  }
+
+  if (/limit:\s*0|Free Tier|upgrade your tier|rate.?limit/i.test(message)) {
+    throw Object.assign(
+      new Error(
+        "API key ini tidak punya kuota generate gambar (Free Tier limit 0). Aktifkan billing / upgrade di Google AI Studio (ai.dev/rate-limit), lalu coba lagi."
+      ),
+      { status: 429 }
     );
   }
 
