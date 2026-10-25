@@ -77,6 +77,24 @@ export interface FreeDesignCopyResult {
   subtext: string;
 }
 
+export interface FreeDesignImageRequestBody {
+  prompt: string;
+  aspect: AspectRatio;
+}
+
+export interface FreeDesignImageResult {
+  imageDataUrl: string;
+  model: string;
+}
+
+/** Penyesuaian posisi/ukuran teks di atas preset Desain bebas. */
+export interface FreeDesignLayout {
+  /** Skala tipografi (0.7–1.45). Default 1. */
+  fontScale: number;
+  /** Geser blok teks vertikal dalam px desain (≈ −220…220). */
+  shiftY: number;
+}
+
 export interface ApiErrorBody {
   error: string;
 }

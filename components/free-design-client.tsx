@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import { FreeDesignLayoutControls } from "@/components/free-design-layout-controls";
 import { FreeDesignPicker } from "@/components/free-design-picker";
 import { LogoUploader } from "@/components/logo-uploader";
 import { FreeDesignSlide } from "@/components/slides/free-design-slide";
@@ -29,6 +37,8 @@ import type {
   AspectRatio,
   FreeDesignCopyResult,
   FreeDesignCopyTone,
+  FreeDesignImageResult,
+  FreeDesignLayout,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +54,8 @@ const TONE_OPTIONS: { value: FreeDesignCopyTone; label: string }[] = [
   { value: "santai", label: "Santai" },
   { value: "promo", label: "Promo" },
 ];
+
+const DEFAULT_LAYOUT: FreeDesignLayout = { fontScale: 1, shiftY: 0 };
 
 function downloadPng(dataUrl: string, filename: string) {
   const link = document.createElement("a");
@@ -70,19 +82,28 @@ export function FreeDesignClient() {
   const [designId, setDesignId] = useState<FreeDesignId>("quote-noir");
   const [aspect, setAspect] = useState<AspectRatio>("1080x1350");
   const [brief, setBrief] = useState("");
+  const [imagePrompt, setImagePrompt] = useState("");
   const [tone, setTone] = useState<FreeDesignCopyTone>("natural");
   const [headline, setHeadline] = useState("");
   const [subtext, setSubtext] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageModel, setImageModel] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<string[]>([]);
+  const [layout, setLayout] = useState<FreeDesignLayout>(DEFAULT_LAYOUT);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [generating, setGenerating] = useState(false);
+  const [generatingCopy, setGeneratingCopy] = useState(false);
+  const [generatingImage, setGeneratingImage] = useState(false);
   const [previewWidth, setPreviewWidth] = useState(320);
   const shellRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const busy = exporting || generating;
+  const dragRef = useRef<{
+    pointerId: number;
+    startClientY: number;
+    startShiftY: number;
+  } | null>(null);
 
+  const busy = exporting || generatingCopy || generatingImage;
   const design = getFreeDesign(designId);
   const size = useMemo(() => getAspectSize(aspect), [aspect]);
   const scale = previewWidth / size.width;
@@ -111,6 +132,7 @@ export function FreeDesignClient() {
     setDesignId(id);
     saveStoredFreeDesignId(id);
     setAspect(getFreeDesign(id).preferredAspect);
+    setLayout(DEFAULT_LAYOUT);
   }
 
   async function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
@@ -136,6 +158,7 @@ export function FreeDesignClient() {
         reader.readAsDataURL(file);
       });
       setImageUrl(dataUrl);
+      setImageModel(null);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal mengunggah foto.");
@@ -148,7 +171,7 @@ export function FreeDesignClient() {
       return;
     }
     setError(null);
-    setGenerating(true);
+    setGeneratingCopy(true);
     try {
       const res = await fetch("/api/free-design-copy", {
         method: "POST",
@@ -172,7 +195,72 @@ export function FreeDesignClient() {
         err instanceof Error ? err.message : "Gagal generate copy dengan AI."
       );
     } finally {
-      setGenerating(false);
+      setGeneratingCopy(false);
+    }
+  }
+
+  async function handleGenerateImage() {
+    const prompt = (imagePrompt.trim() || brief.trim()).slice(0, 600);
+    if (prompt.length < 8) {
+      setError("Isi prompt latar (atau brief) minimal 8 karakter.");
+      return;
+    }
+    setError(null);
+    setGeneratingImage(true);
+    try {
+      const res = await fetch("/api/free-design-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, aspect }),
+      });
+      if (!res.ok) {
+        throw new Error(await readError(res));
+      }
+      const data = (await res.json()) as FreeDesignImageResult;
+      setImageUrl(data.imageDataUrl);
+      setImageModel(data.model);
+      if (!imagePrompt.trim()) setImagePrompt(prompt);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Gagal generate latar dengan AI."
+      );
+    } finally {
+      setGeneratingImage(false);
+    }
+  }
+
+  function onDragHandlePointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (busy) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startClientY: event.clientY,
+      startShiftY: layout.shiftY,
+    };
+  }
+
+  function onDragHandlePointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const deltaDesignPx = (event.clientY - drag.startClientY) / scale;
+    const next = Math.min(
+      220,
+      Math.max(-220, Math.round(drag.startShiftY + deltaDesignPx))
+    );
+    setLayout((prev) =>
+      prev.shiftY === next ? prev : { ...prev, shiftY: next }
+    );
+  }
+
+  function onDragHandlePointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // ignore
     }
   }
 
@@ -192,6 +280,7 @@ export function FreeDesignClient() {
         subtext: subtext.trim() || undefined,
         logoSrc,
         titleHighlights: highlights,
+        layout,
       });
       const slug =
         headline
@@ -213,7 +302,7 @@ export function FreeDesignClient() {
         <CardHeader className="space-y-1 p-4 sm:p-6">
           <CardTitle>Desain bebas</CardTitle>
           <CardDescription>
-            Brief singkat → AI isi teks, pilih desain, unduh PNG.
+            Prompt → latar Gemini → copy → atur teks → unduh PNG.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
@@ -223,40 +312,6 @@ export function FreeDesignClient() {
             onLogoChange={setLogoSrc}
             onError={setError}
           />
-
-          <div className="space-y-2">
-            <Label>Foto latar</Label>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              onChange={handlePhotoChange}
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() => fileRef.current?.click()}
-              >
-                {imageUrl ? "Ganti foto" : "Unggah foto"}
-              </Button>
-              {imageUrl ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={busy}
-                  onClick={() => setImageUrl(null)}
-                >
-                  Hapus foto
-                </Button>
-              ) : null}
-            </div>
-            <p className="text-xs text-zinc-500">
-              Opsional. Tanpa foto, memakai gradasi desain.
-            </p>
-          </div>
 
           <FreeDesignPicker
             value={designId}
@@ -287,43 +342,98 @@ export function FreeDesignClient() {
           </div>
 
           <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50/80 p-3">
-            <Label htmlFor="free-brief">Brief untuk AI</Label>
+            <Label htmlFor="free-image-prompt">Prompt latar (Gemini)</Label>
+            <textarea
+              id="free-image-prompt"
+              rows={3}
+              value={imagePrompt}
+              disabled={busy}
+              onChange={(e) => setImagePrompt(e.target.value)}
+              placeholder="Mis. Cafe pantai Sanur pagi hari, cahaya lembut, tanpa teks"
+              maxLength={600}
+              className="flex w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 disabled:opacity-50"
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                className="flex-1"
+                disabled={
+                  busy ||
+                  (imagePrompt.trim().length < 8 && brief.trim().length < 8)
+                }
+                onClick={handleGenerateImage}
+              >
+                {generatingImage ? "Membuat latar…" : "Generate latar AI"}
+              </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={handlePhotoChange}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => fileRef.current?.click()}
+              >
+                {imageUrl ? "Ganti foto" : "Unggah"}
+              </Button>
+              {imageUrl ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => {
+                    setImageUrl(null);
+                    setImageModel(null);
+                  }}
+                >
+                  Hapus
+                </Button>
+              ) : null}
+            </div>
+            <p className="text-xs text-zinc-500">
+              Imagen diganti Gemini image (Nano Banana). Tanpa teks di dalam
+              gambar — teks ditambahkan di editor.
+              {imageModel ? ` · Model: ${imageModel}` : null}
+            </p>
+          </div>
+
+          <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50/80 p-3">
+            <Label htmlFor="free-brief">Brief copy</Label>
             <textarea
               id="free-brief"
-              rows={3}
+              rows={2}
               value={brief}
               disabled={busy}
               onChange={(e) => setBrief(e.target.value)}
               placeholder={
                 design.category === "promo"
-                  ? "Mis. Kopi susu oat, diskon 30% weekend, klaim di kasir"
-                  : design.category === "quote"
-                    ? "Mis. Motivasi pagi untuk tim sales yang sedang buru target"
-                    : "Mis. Soft launch cafe baru di Sanur, fokus suasana pantai"
+                  ? "Mis. Kopi susu oat, diskon 30% weekend"
+                  : "Mis. Motivasi pagi untuk tim sales"
               }
               maxLength={500}
               className="flex w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 disabled:opacity-50"
             />
-            <div className="space-y-2">
-              <Label>Tone</Label>
-              <div className="flex flex-wrap gap-2">
-                {TONE_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setTone(option.value)}
-                    className={cn(
-                      "rounded-md border px-2.5 py-1.5 text-xs transition-colors",
-                      tone === option.value
-                        ? "border-zinc-900 bg-zinc-900 text-white"
-                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+            <div className="flex flex-wrap gap-2">
+              {TONE_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setTone(option.value)}
+                  className={cn(
+                    "rounded-md border px-2.5 py-1.5 text-xs transition-colors",
+                    tone === option.value
+                      ? "border-zinc-900 bg-zinc-900 text-white"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
             <Button
               type="button"
@@ -332,7 +442,7 @@ export function FreeDesignClient() {
               disabled={busy || brief.trim().length < 8}
               onClick={handleGenerateCopy}
             >
-              {generating ? "Menulis copy…" : "Generate dengan AI"}
+              {generatingCopy ? "Menulis copy…" : "Generate copy"}
             </Button>
           </div>
 
@@ -380,6 +490,12 @@ export function FreeDesignClient() {
             />
           ) : null}
 
+          <FreeDesignLayoutControls
+            layout={layout}
+            disabled={busy}
+            onChange={setLayout}
+          />
+
           {error ? (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
@@ -399,15 +515,16 @@ export function FreeDesignClient() {
 
       <Card>
         <CardHeader className="space-y-1 p-4 sm:p-6">
-          <CardTitle>Preview</CardTitle>
+          <CardTitle>Preview / editor</CardTitle>
           <CardDescription>
             {design.name} · {size.width}×{size.height}
+            {generatingImage ? " · generating latar…" : null}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
           <div ref={shellRef} className="flex w-full justify-center">
             <div
-              className="overflow-hidden rounded-xl shadow-lg ring-1 ring-zinc-200"
+              className="relative overflow-hidden rounded-xl shadow-lg ring-1 ring-zinc-200"
               style={{ width: previewWidth, height: previewHeight }}
             >
               <div
@@ -426,8 +543,27 @@ export function FreeDesignClient() {
                   subtext={subtext}
                   logoSrc={logoSrc}
                   titleHighlights={highlights}
+                  layout={layout}
                 />
               </div>
+              <button
+                type="button"
+                aria-label="Geser posisi teks"
+                disabled={busy}
+                onPointerDown={onDragHandlePointerDown}
+                onPointerMove={onDragHandlePointerMove}
+                onPointerUp={onDragHandlePointerUp}
+                onPointerCancel={onDragHandlePointerUp}
+                className={cn(
+                  "absolute left-1/2 z-20 flex h-8 w-28 -translate-x-1/2 cursor-ns-resize items-center justify-center rounded-full border border-white/70 bg-zinc-900/75 text-[10px] font-medium tracking-wide text-white shadow-lg backdrop-blur-sm disabled:opacity-40",
+                  "touch-none select-none"
+                )}
+                style={{
+                  top: `calc(${68 + (layout.shiftY / size.height) * 100}% - 16px)`,
+                }}
+              >
+                ↕ geser teks
+              </button>
             </div>
           </div>
         </CardContent>

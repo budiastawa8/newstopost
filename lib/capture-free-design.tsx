@@ -6,7 +6,7 @@ import { toPng } from "html-to-image";
 import { FreeDesignSlide } from "@/components/slides/free-design-slide";
 import { fetchImageAsDataUrl } from "@/lib/aspect";
 import type { FreeDesignPreset } from "@/lib/free-designs";
-import type { AspectSize } from "@/lib/types";
+import type { AspectSize, FreeDesignLayout } from "@/lib/types";
 
 function waitForPaint(): Promise<void> {
   return new Promise((resolve) => {
@@ -51,6 +51,7 @@ export async function captureFreeDesignToPngDataUrl(options: {
   subtext?: string;
   logoSrc: string | null;
   titleHighlights?: string[] | null;
+  layout?: FreeDesignLayout | null;
 }): Promise<string> {
   const {
     design,
@@ -60,6 +61,7 @@ export async function captureFreeDesignToPngDataUrl(options: {
     subtext,
     logoSrc,
     titleHighlights,
+    layout,
   } = options;
 
   if (typeof document !== "undefined" && document.fonts?.ready) {
@@ -103,6 +105,7 @@ export async function captureFreeDesignToPngDataUrl(options: {
           subtext={subtext}
           logoSrc={readyLogo}
           titleHighlights={titleHighlights}
+          layout={layout}
           ref={(el) => {
             nodeBox.current = el;
           }}
