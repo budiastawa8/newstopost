@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { jsonError } from "@/lib/api-error";
-import { generateBackgroundImage } from "@/lib/gemini-image";
+import { generateBackgroundImage } from "@/lib/cloudflare-image";
 import type {
   ApiErrorBody,
   AspectRatio,
@@ -10,7 +10,7 @@ import type {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-/** Generate gambar sering >30s; butuh headroom Vercel. */
+/** Generate gambar Workers AI sering 10–40s. */
 export const maxDuration = 60;
 
 const VALID_ASPECTS = new Set<AspectRatio>([

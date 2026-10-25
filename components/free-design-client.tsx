@@ -302,7 +302,7 @@ export function FreeDesignClient() {
         <CardHeader className="space-y-1 p-4 sm:p-6">
           <CardTitle>Desain bebas</CardTitle>
           <CardDescription>
-            Prompt → latar Gemini → copy → atur teks → unduh PNG.
+            Prompt → latar Cloudflare AI → copy → atur teks → unduh PNG.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
@@ -342,7 +342,7 @@ export function FreeDesignClient() {
           </div>
 
           <div className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50/80 p-3">
-            <Label htmlFor="free-image-prompt">Prompt latar (Gemini)</Label>
+            <Label htmlFor="free-image-prompt">Prompt latar (Cloudflare AI)</Label>
             <textarea
               id="free-image-prompt"
               rows={3}
@@ -395,10 +395,11 @@ export function FreeDesignClient() {
               ) : null}
             </div>
             <p className="text-xs text-zinc-500">
-              Deskripsikan suasana latar (bukan teks poster). Lalu klik{" "}
+              Gratis via Cloudflare Workers AI (FLUX/SDXL). Deskripsikan suasana
+              latar, lalu klik{" "}
               <span className="font-medium text-zinc-700">Generate latar AI</span>
               — mengetik saja tidak membuat gambar.
-              {imageModel ? ` · Model: ${imageModel}` : null}
+              {imageModel ? ` · ${imageModel.replace(/^@cf\//, "")}` : null}
             </p>
           </div>
 
