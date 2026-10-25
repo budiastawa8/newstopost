@@ -17,13 +17,52 @@ const SIZED_MODELS = [
 /** FLUX cepat (biasanya square) — fallback terakhir. */
 const FLUX_MODEL = "@cf/black-forest-labs/flux-1-schnell";
 
+function stripOuterQuotes(raw: string): string {
+  const value = raw.trim();
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    return value.slice(1, -1).trim();
+  }
+  return value;
+}
+
+/** Account ID Cloudflare = hex 32 karakter. */
+function sanitizeAccountId(raw: string | undefined): string {
+  if (!raw) return "";
+  const value = stripOuterQuotes(raw);
+  const hex = value.match(/\b([a-f0-9]{32})\b/i);
+  if (hex?.[1]) return hex[1].toLowerCase();
+  if (/^[a-f0-9]{32}$/i.test(value)) return value.toLowerCase();
+  return "";
+}
+
+/**
+ * Token Workers AI. User sering paste seluruh perintah curl verify —
+ * ekstrak `cfut_…` jika ada; tolak nilai yang masih berisi spasi/curl.
+ */
+function sanitizeApiToken(raw: string | undefined): string {
+  if (!raw) return "";
+  const value = stripOuterQuotes(raw);
+  const cfut = value.match(/\b(cfut_[A-Za-z0-9]+)\b/);
+  if (cfut?.[1]) return cfut[1];
+  const bearer = value.match(/\bBearer\s+([A-Za-z0-9_-]{20,})\b/i);
+  if (bearer?.[1]) return bearer[1];
+  const cleaned = value.replace(/^Bearer\s+/i, "").trim();
+  if (/[\s\\]/.test(cleaned) || /curl\s/i.test(cleaned)) return "";
+  if (/^cfut_[A-Za-z0-9]+$/.test(cleaned)) return cleaned;
+  if (/^[A-Za-z0-9_-]{20,}$/.test(cleaned)) return cleaned;
+  return "";
+}
+
 function getCredentials(): { accountId: string; apiToken: string } {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim();
+  const accountId = sanitizeAccountId(process.env.CLOUDFLARE_ACCOUNT_ID);
+  const apiToken = sanitizeApiToken(process.env.CLOUDFLARE_API_TOKEN);
   if (!accountId || !apiToken) {
     throw Object.assign(
       new Error(
-        "CLOUDFLARE_ACCOUNT_ID dan CLOUDFLARE_API_TOKEN belum diset. Buat token Workers AI di dashboard Cloudflare (Use REST API)."
+        "CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN belum valid. Isi HANYA nilai mentah (Account ID hex + token cfut_…), jangan tempel perintah curl dari dashboard."
       ),
       { status: 503 }
     );
