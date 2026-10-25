@@ -5,6 +5,7 @@ import { flushSync } from "react-dom";
 import { toPng } from "html-to-image";
 import { StorySlide } from "@/components/slides/story-slide";
 import { fetchImageAsDataUrl, STORY_SIZE } from "@/lib/aspect";
+import { DEFAULT_FONT_SCALE } from "@/lib/font-scale";
 import type { DesignTemplate } from "@/lib/templates";
 
 function waitForPaint(): Promise<void> {
@@ -50,6 +51,7 @@ export async function captureStoryToPngDataUrl(options: {
   template: DesignTemplate;
   coverLabel: string;
   titleHighlights?: string[] | null;
+  fontScale?: number;
 }): Promise<string> {
   const {
     title,
@@ -59,6 +61,7 @@ export async function captureStoryToPngDataUrl(options: {
     template,
     coverLabel,
     titleHighlights,
+    fontScale = DEFAULT_FONT_SCALE,
   } = options;
 
   if (typeof document !== "undefined" && document.fonts?.ready) {
@@ -105,6 +108,7 @@ export async function captureStoryToPngDataUrl(options: {
           template={template}
           coverLabel={coverLabel}
           titleHighlights={titleHighlights}
+          fontScale={fontScale}
           ref={(el) => {
             nodeBox.current = el;
           }}

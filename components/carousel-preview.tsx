@@ -17,6 +17,7 @@ import { SummarySlide } from "@/components/slides/summary-slide";
 import { Button } from "@/components/ui/button";
 import { getAspectSize } from "@/lib/aspect";
 import { captureSlidesToPngDataUrls } from "@/lib/capture-slides";
+import { DEFAULT_FONT_SCALE } from "@/lib/font-scale";
 import type { DesignTemplate } from "@/lib/templates";
 import type { AspectRatio, AspectSize, SlideModel } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export interface CarouselPreviewProps {
   generationKey: string;
   template: DesignTemplate;
   coverLabel: string;
+  fontScale?: number;
   /** Override lebar preview (px). Default: isi lebar kartu. */
   previewWidth?: number;
 }
@@ -42,7 +44,8 @@ function renderSlide(
   logoSrc: string | null,
   imageCacheKey: string,
   template: DesignTemplate,
-  coverLabel: string
+  coverLabel: string,
+  fontScale: number
 ) {
   if (slide.kind === "cover") {
     return (
@@ -53,6 +56,7 @@ function renderSlide(
         template={template}
         coverLabel={coverLabel}
         imageCacheKey={imageCacheKey}
+        fontScale={fontScale}
       />
     );
   }
@@ -63,6 +67,7 @@ function renderSlide(
         size={size}
         logoSrc={logoSrc}
         template={template}
+        fontScale={fontScale}
       />
     );
   }
@@ -73,6 +78,7 @@ function renderSlide(
       logoSrc={logoSrc}
       template={template}
       imageCacheKey={imageCacheKey}
+      fontScale={fontScale}
     />
   );
 }
@@ -88,6 +94,7 @@ export const CarouselPreview = forwardRef<
     generationKey,
     template,
     coverLabel,
+    fontScale = DEFAULT_FONT_SCALE,
     previewWidth: previewWidthProp,
   },
   ref
@@ -102,6 +109,7 @@ export const CarouselPreview = forwardRef<
   const keyRef = useRef(generationKey);
   const templateRef = useRef(template);
   const coverLabelRef = useRef(coverLabel);
+  const fontScaleRef = useRef(fontScale);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isCapturing, setIsCapturing] = useState(false);
   const dragStartX = useRef<number | null>(null);
@@ -127,6 +135,7 @@ export const CarouselPreview = forwardRef<
   keyRef.current = generationKey;
   templateRef.current = template;
   coverLabelRef.current = coverLabel;
+  fontScaleRef.current = fontScale;
 
   useEffect(() => {
     setActiveIndex(0);
@@ -148,6 +157,7 @@ export const CarouselPreview = forwardRef<
             generationKey: keyRef.current,
             template: templateRef.current,
             coverLabel: coverLabelRef.current,
+            fontScale: fontScaleRef.current,
           });
         } finally {
           setIsCapturing(false);
@@ -281,7 +291,8 @@ export const CarouselPreview = forwardRef<
               logoSrc,
               generationKey,
               template,
-              coverLabel
+              coverLabel,
+              fontScale
             )}
           </div>
         </div>

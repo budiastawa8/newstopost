@@ -7,6 +7,7 @@ import { CoverSlide } from "@/components/slides/cover-slide";
 import { PhotoSlide } from "@/components/slides/photo-slide";
 import { SummarySlide } from "@/components/slides/summary-slide";
 import { fetchImageAsDataUrl } from "@/lib/aspect";
+import { DEFAULT_FONT_SCALE } from "@/lib/font-scale";
 import type { DesignTemplate } from "@/lib/templates";
 import type { AspectSize, SlideModel } from "@/lib/types";
 
@@ -72,6 +73,7 @@ function renderSlideElement(
   logoSrc: string | null,
   template: DesignTemplate,
   coverLabel: string,
+  fontScale: number,
   setRef: (el: HTMLElement | null) => void
 ) {
   if (slide.kind === "cover") {
@@ -82,6 +84,7 @@ function renderSlideElement(
         logoSrc={logoSrc}
         template={template}
         coverLabel={coverLabel}
+        fontScale={fontScale}
         ref={setRef}
       />
     );
@@ -93,6 +96,7 @@ function renderSlideElement(
         size={size}
         logoSrc={logoSrc}
         template={template}
+        fontScale={fontScale}
         ref={setRef}
       />
     );
@@ -103,6 +107,7 @@ function renderSlideElement(
       size={size}
       logoSrc={logoSrc}
       template={template}
+      fontScale={fontScale}
       ref={setRef}
     />
   );
@@ -114,6 +119,7 @@ async function captureOneSlide(
   logoSrc: string | null,
   template: DesignTemplate,
   coverLabel: string,
+  fontScale: number,
   slideIndex: number
 ): Promise<string> {
   const host = document.createElement("div");
@@ -142,9 +148,17 @@ async function captureOneSlide(
   try {
     flushSync(() => {
       root!.render(
-        renderSlideElement(slide, size, logoSrc, template, coverLabel, (el) => {
-          nodeBox.current = el;
-        })
+        renderSlideElement(
+          slide,
+          size,
+          logoSrc,
+          template,
+          coverLabel,
+          fontScale,
+          (el) => {
+            nodeBox.current = el;
+          }
+        )
       );
     });
 
@@ -198,9 +212,17 @@ export async function captureSlidesToPngDataUrls(options: {
   generationKey: string;
   template: DesignTemplate;
   coverLabel: string;
+  fontScale?: number;
 }): Promise<string[]> {
-  const { slides, size, logoSrc, generationKey, template, coverLabel } =
-    options;
+  const {
+    slides,
+    size,
+    logoSrc,
+    generationKey,
+    template,
+    coverLabel,
+    fontScale = DEFAULT_FONT_SCALE,
+  } = options;
   if (slides.length === 0) {
     throw new Error("Tidak ada slide untuk diunduh.");
   }
@@ -242,6 +264,7 @@ export async function captureSlidesToPngDataUrls(options: {
         readyLogo,
         template,
         coverLabel,
+        fontScale,
         i
       );
       dataUrls.push(dataUrl);

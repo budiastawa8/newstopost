@@ -6,6 +6,7 @@ import {
   type CarouselPreviewHandle,
 } from "@/components/carousel-preview";
 import { CaptionPanel } from "@/components/caption-panel";
+import { FontScaleControl } from "@/components/font-scale-control";
 import {
   GenerateProgress,
   PreviewSkeleton,
@@ -35,6 +36,11 @@ import {
 } from "@/lib/cover-label";
 import { zipPngDataUrls } from "@/lib/export-slides";
 import { loadStoredLogo } from "@/lib/logo-storage";
+import {
+  DEFAULT_FONT_SCALE,
+  loadStoredFontScale,
+  saveStoredFontScale,
+} from "@/lib/font-scale";
 import {
   DEFAULT_PARAGRAPH_COUNT,
   loadStoredParagraphCount,
@@ -113,6 +119,7 @@ export function HomeClient({
   const [scrapeMeta, setScrapeMeta] = useState<string | null>(null);
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
   const [coverLabel, setCoverLabel] = useState(DEFAULT_COVER_LABEL);
+  const [fontScale, setFontScale] = useState(DEFAULT_FONT_SCALE);
   const [templateId, setTemplateId] =
     useState<TemplateId>(DEFAULT_TEMPLATE_ID);
   const previewRef = useRef<CarouselPreviewHandle>(null);
@@ -128,11 +135,17 @@ export function HomeClient({
     setCoverLabel(loadStoredCoverLabel());
     setParagraphCount(loadStoredParagraphCount());
     setIncludeStory(loadStoredIncludeStory());
+    setFontScale(loadStoredFontScale());
   }, []);
 
   function handleTemplateChange(id: TemplateId) {
     setTemplateId(id);
     saveStoredTemplateId(id);
+  }
+
+  function handleFontScaleChange(value: number) {
+    setFontScale(value);
+    saveStoredFontScale(value);
   }
 
   function handleCoverLabelChange(value: string) {
@@ -285,6 +298,7 @@ export function HomeClient({
           template,
           coverLabel: normalizeCoverLabel(coverLabel),
           titleHighlights: storyAsset.titleHighlights,
+          fontScale,
         });
       }
 
@@ -378,6 +392,14 @@ export function HomeClient({
             ) : null}
 
             {slides.length > 0 ? (
+              <FontScaleControl
+                value={fontScale}
+                disabled={loading || exporting}
+                onChange={handleFontScaleChange}
+              />
+            ) : null}
+
+            {slides.length > 0 ? (
               <Button
                 type="button"
                 variant="secondary"
@@ -426,6 +448,7 @@ export function HomeClient({
                   template={template}
                   coverLabel={normalizeCoverLabel(coverLabel)}
                   generationKey={generationKey || sourceUrl || "preview"}
+                  fontScale={fontScale}
                 />
                 {includeStory && storyAsset ? (
                   <StoryPreview
@@ -436,6 +459,7 @@ export function HomeClient({
                     coverLabel={normalizeCoverLabel(coverLabel)}
                     titleHighlights={storyAsset.titleHighlights}
                     generationKey={generationKey || sourceUrl || "preview"}
+                    fontScale={fontScale}
                   />
                 ) : null}
               </div>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { StorySlide } from "@/components/slides/story-slide";
 import { STORY_SIZE } from "@/lib/aspect";
+import { DEFAULT_FONT_SCALE } from "@/lib/font-scale";
 import type { DesignTemplate } from "@/lib/templates";
 
 export interface StoryPreviewProps {
@@ -13,6 +14,7 @@ export interface StoryPreviewProps {
   coverLabel: string;
   titleHighlights?: string[] | null;
   generationKey: string;
+  fontScale?: number;
 }
 
 export function StoryPreview({
@@ -23,6 +25,7 @@ export function StoryPreview({
   coverLabel,
   titleHighlights,
   generationKey,
+  fontScale = DEFAULT_FONT_SCALE,
 }: StoryPreviewProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(220);
@@ -68,6 +71,7 @@ export function StoryPreview({
             coverLabel={coverLabel}
             titleHighlights={titleHighlights}
             imageCacheKey={`${generationKey}::story-preview`}
+            fontScale={fontScale}
           />
         </div>
       </div>

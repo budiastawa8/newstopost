@@ -3,6 +3,7 @@
 import { forwardRef } from "react";
 import { SlideFrame } from "@/components/slides/slide-frame";
 import { SlideLogo } from "@/components/slides/slide-logo";
+import { DEFAULT_FONT_SCALE, scalePx } from "@/lib/font-scale";
 import type { DesignTemplate } from "@/lib/templates";
 import type { AspectSize, SummarySlideModel } from "@/lib/types";
 
@@ -11,10 +12,14 @@ export interface SummarySlideProps {
   size: AspectSize;
   logoSrc: string | null;
   template: DesignTemplate;
+  fontScale?: number;
 }
 
 export const SummarySlide = forwardRef<HTMLDivElement, SummarySlideProps>(
-  function SummarySlide({ slide, size, logoSrc, template }, ref) {
+  function SummarySlide(
+    { slide, size, logoSrc, template, fontScale = DEFAULT_FONT_SCALE },
+    ref
+  ) {
     const isSquare = size.height === 1080;
     const paragraphs = slide.points;
     const count = paragraphs.length;
@@ -22,11 +27,19 @@ export const SummarySlide = forwardRef<HTMLDivElement, SummarySlideProps>(
       ? template.layout.bodySize.square
       : template.layout.bodySize.portrait;
     // 2 paragraf: lebih besar biar mengisi; 4: sedikit dipadatkan
-    const fontSize =
-      count <= 2 ? baseFont + (isSquare ? 4 : 6) : count >= 4 ? baseFont - 2 : baseFont;
-    const titleSize = isSquare
-      ? template.layout.summaryTitleSize.square
-      : template.layout.summaryTitleSize.portrait;
+    const rawBody =
+      count <= 2
+        ? baseFont + (isSquare ? 4 : 6)
+        : count >= 4
+          ? baseFont - 2
+          : baseFont;
+    const fontSize = scalePx(rawBody, fontScale);
+    const titleSize = scalePx(
+      isSquare
+        ? template.layout.summaryTitleSize.square
+        : template.layout.summaryTitleSize.portrait,
+      fontScale
+    );
     const gap =
       count <= 2 ? (isSquare ? 40 : 52) : count >= 4 ? (isSquare ? 20 : 24) : isSquare ? 28 : 36;
     const isLight = template.id === "clean-paper";

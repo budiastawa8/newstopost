@@ -5,6 +5,7 @@ import { HighlightedTitle } from "@/components/slides/highlighted-title";
 import { SlideFrame } from "@/components/slides/slide-frame";
 import { SlideLogo } from "@/components/slides/slide-logo";
 import { proxiedImageUrl } from "@/lib/aspect";
+import { DEFAULT_FONT_SCALE, scalePx } from "@/lib/font-scale";
 import type { DesignTemplate } from "@/lib/templates";
 import type { AspectSize, CoverSlideModel } from "@/lib/types";
 
@@ -15,18 +16,31 @@ export interface CoverSlideProps {
   template: DesignTemplate;
   coverLabel: string;
   imageCacheKey?: string;
+  fontScale?: number;
 }
 
 export const CoverSlide = forwardRef<HTMLDivElement, CoverSlideProps>(
   function CoverSlide(
-    { slide, size, logoSrc, template, coverLabel, imageCacheKey },
+    {
+      slide,
+      size,
+      logoSrc,
+      template,
+      coverLabel,
+      imageCacheKey,
+      fontScale = DEFAULT_FONT_SCALE,
+    },
     ref
   ) {
     const imageSrc = proxiedImageUrl(slide.imageUrl, imageCacheKey);
     const isSquare = size.height === 1080;
-    const titleSize = isSquare
-      ? template.layout.coverTitleSize.square
-      : template.layout.coverTitleSize.portrait;
+    const titleSize = scalePx(
+      isSquare
+        ? template.layout.coverTitleSize.square
+        : template.layout.coverTitleSize.portrait,
+      fontScale
+    );
+    const labelSize = scalePx(14, fontScale);
 
     // Overlay gelap hanya di band judul (bukan full-slide), dengan fade ke transparan
     const textBlockClass =
@@ -67,8 +81,9 @@ export const CoverSlide = forwardRef<HTMLDivElement, CoverSlideProps>(
         >
           {coverLabel.trim() ? (
             <p
-              className="mb-4 text-sm font-semibold"
+              className="mb-4 font-semibold"
               style={{
+                fontSize: labelSize,
                 color: template.colors.accent,
                 textTransform: template.layout.labelUppercase
                   ? "uppercase"

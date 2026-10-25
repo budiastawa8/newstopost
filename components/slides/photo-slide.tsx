@@ -4,6 +4,7 @@ import { forwardRef } from "react";
 import { SlideFrame } from "@/components/slides/slide-frame";
 import { SlideLogo } from "@/components/slides/slide-logo";
 import { proxiedImageUrl } from "@/lib/aspect";
+import { DEFAULT_FONT_SCALE, scalePx } from "@/lib/font-scale";
 import type { DesignTemplate } from "@/lib/templates";
 import type { AspectSize, PhotoSlideModel } from "@/lib/types";
 
@@ -13,14 +14,23 @@ export interface PhotoSlideProps {
   logoSrc: string | null;
   template: DesignTemplate;
   imageCacheKey?: string;
+  fontScale?: number;
 }
 
 export const PhotoSlide = forwardRef<HTMLDivElement, PhotoSlideProps>(
   function PhotoSlide(
-    { slide, size, logoSrc, template, imageCacheKey },
+    {
+      slide,
+      size,
+      logoSrc,
+      template,
+      imageCacheKey,
+      fontScale = DEFAULT_FONT_SCALE,
+    },
     ref
   ) {
     const imageSrc = proxiedImageUrl(slide.imageUrl, imageCacheKey);
+    const captionSize = scalePx(18, fontScale);
 
     return (
       <SlideFrame
@@ -52,8 +62,9 @@ export const PhotoSlide = forwardRef<HTMLDivElement, PhotoSlideProps>(
 
         {slide.caption ? (
           <p
-            className="absolute bottom-10 left-0 right-0 z-10 text-center text-lg font-medium tracking-wide"
+            className="absolute bottom-10 left-0 right-0 z-10 text-center font-medium tracking-wide"
             style={{
+              fontSize: captionSize,
               color: template.colors.caption,
               fontFamily: template.fonts.body,
             }}

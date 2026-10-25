@@ -5,6 +5,7 @@ import { HighlightedTitle } from "@/components/slides/highlighted-title";
 import { SlideFrame } from "@/components/slides/slide-frame";
 import { SlideLogo } from "@/components/slides/slide-logo";
 import { STORY_SIZE, proxiedImageUrl } from "@/lib/aspect";
+import { DEFAULT_FONT_SCALE, scalePx } from "@/lib/font-scale";
 import type { DesignTemplate } from "@/lib/templates";
 
 export interface StorySlideProps {
@@ -15,6 +16,7 @@ export interface StorySlideProps {
   coverLabel: string;
   titleHighlights?: string[] | null;
   imageCacheKey?: string;
+  fontScale?: number;
 }
 
 /** Satu frame 9:16 (1080×1920) untuk IG/FB Story — reuse data cover. */
@@ -28,11 +30,13 @@ export const StorySlide = forwardRef<HTMLDivElement, StorySlideProps>(
       coverLabel,
       titleHighlights,
       imageCacheKey,
+      fontScale = DEFAULT_FONT_SCALE,
     },
     ref
   ) {
     const imageSrc = proxiedImageUrl(imageUrl, imageCacheKey);
-    const titleSize = 64;
+    const titleSize = scalePx(64, fontScale);
+    const labelSize = scalePx(16, fontScale);
 
     return (
       <SlideFrame
@@ -69,8 +73,9 @@ export const StorySlide = forwardRef<HTMLDivElement, StorySlideProps>(
         >
           {coverLabel.trim() ? (
             <p
-              className="mb-5 text-base font-semibold"
+              className="mb-5 font-semibold"
               style={{
+                fontSize: labelSize,
                 color: template.colors.accent,
                 textTransform: template.layout.labelUppercase
                   ? "uppercase"
