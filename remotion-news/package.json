@@ -1,0 +1,26 @@
+{
+  "name": "remotion-news",
+  "version": "1.0.0",
+  "private": true,
+  "description": "News → Motion Graphic renderer (TTS + karaoke) for NewsToPost",
+  "scripts": {
+    "start": "remotion studio",
+    "render": "node scripts/render.mjs",
+    "tts": "node scripts/tts.mjs",
+    "build": "node scripts/render.mjs"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.286",
+    "@remotion/google-fonts": "^4.0.286",
+    "@remotion/media-utils": "^4.0.286",
+    "music-metadata": "^10.9.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.286"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "typescript": "^5.7.3"
+  }
+}

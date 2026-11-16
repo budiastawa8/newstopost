@@ -1,14 +1,16 @@
 # NewsToPost
 
-Ubah URL berita jadi carousel Instagram/Facebook: scrape artikel, ringkas dengan Gemini, preview slide, unduh ZIP PNG.
+Ubah URL berita jadi:
 
-Juga ada mode **Desain bebas** — unggah foto, ketik quote/judul, pilih preset bergaya premium, unduh PNG.
+1. **News → Carousel** — ringkas Gemini, preview slide, unduh ZIP PNG (Instagram/Facebook)
+2. **News → Motion Graphic** — brief VO + karaoke, render MP4 lokal via Remotion (tanpa CapCut)
 
 ## Stack
 
 - Next.js (App Router) + Tailwind + shadcn/ui
-- Gemini API (ringkasan + caption/hashtag)
-- html-to-image + JSZip (export PNG)
+- Gemini API (ringkasan + caption/hashtag + motion brief)
+- html-to-image + JSZip (export PNG carousel)
+- Remotion + edge-tts (render video lokal di `remotion-news/`)
 - Password bersama (middleware) agar hanya tim yang bisa akses
 
 ## Lokal
@@ -29,6 +31,24 @@ Buka [http://localhost:3000](http://localhost:3000).
 | `APP_PASSWORD` | Ya di Vercel | Password bersama tim; tanpa ini production dikunci |
 | `GEMINI_MODEL` | Tidak | Override model (disarankan `gemini-3.5-flash-lite` di Vercel) |
 | `APP_AUTH_SECRET` | Tidak | Secret cookie (default = `APP_PASSWORD`) |
+
+## News → Motion Graphic
+
+1. Pilih tab **News → Motion Graphic**
+2. Tempel URL (atau teks berita) → **Generate Motion Brief**
+3. **Unduh brief.json**
+4. Render di PC:
+
+```powershell
+cd G:\BUDIAST\newstopost\remotion-news
+npm install
+py -3 -m pip install edge-tts
+.\render.ps1 -Brief C:\Users\BUDIAST\Downloads\news-brief-....json
+```
+
+Hasil: `remotion-news\out\news-motion.mp4`
+
+Catatan: render video **tidak** jalan di Vercel — hanya generate brief. MP4 dibuat lokal.
 
 ## PWA
 

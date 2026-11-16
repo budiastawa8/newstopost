@@ -40,3 +40,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# remotion motion graphic (local render artifacts)
+remotion-news/node_modules/
+remotion-news/out/
+remotion-news/public/voice.mp3
+remotion-news/public/voice.vtt
+remotion-news/public/voice-test.*

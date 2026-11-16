@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { FreeDesignClient } from "@/components/free-design-client";
 import { HomeClient } from "@/components/home-client";
 import { LogoutButton } from "@/components/logout-button";
+import { MotionGraphicClient } from "@/components/motion-graphic-client";
 import {
   loadStoredAppMode,
   saveStoredAppMode,
@@ -19,9 +19,10 @@ const MODES: { id: AppMode; label: string; blurb: string }[] = [
     blurb: "Tempel URL, generate ringkasan, unduh PNG siap unggah.",
   },
   {
-    id: "studio",
-    label: "Desain bebas",
-    blurb: "Unggah foto, ketik teks, pilih desain premium, unduh PNG.",
+    id: "motion",
+    label: "News → Motion Graphic",
+    blurb:
+      "Tempel URL, generate brief VO + karaoke, render MP4 via Remotion (tanpa CapCut).",
   },
 ];
 
@@ -81,7 +82,7 @@ export function AppShell({ showLogout = false }: { showLogout?: boolean }) {
           <h1 className="text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl">
             {mode === "carousel"
               ? "Berita jadi carousel Instagram"
-              : "Desain bebas bergaya premium"}
+              : "Berita jadi video motion graphic"}
           </h1>
           <p className="max-w-xl text-sm leading-relaxed text-zinc-500 sm:text-[15px]">
             {active.blurb}
@@ -92,7 +93,7 @@ export function AppShell({ showLogout = false }: { showLogout?: boolean }) {
       {mode === "carousel" ? (
         <HomeClient embedded showLogout={false} />
       ) : (
-        <FreeDesignClient />
+        <MotionGraphicClient />
       )}
     </div>
   );

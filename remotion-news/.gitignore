@@ -1,0 +1,8 @@
+node_modules/
+out/
+public/voice.mp3
+public/voice.vtt
+.DS_Store
+*.log
+
+public/voice-test.*

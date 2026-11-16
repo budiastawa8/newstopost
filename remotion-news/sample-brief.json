@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "channel": "TRISTA MEDIA",
+  "cta": "Ikuti untuk update berikutnya",
+  "title": "Contoh berita: harga komoditas bergerak hari ini",
+  "durationSec": 15,
+  "aspect": "9:16",
+  "style": "explainer",
+  "tone": "netral",
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "voText": "Sorotan: harga komoditas bergerak hari ini. Pasar merespons data baru dengan cepat. Pantau dampaknya ke konsumen. Ikuti untuk update berikutnya.",
+  "beats": [
+    {
+      "id": "hook",
+      "role": "hook",
+      "startSec": 0,
+      "endSec": 3,
+      "vo": "Sorotan: harga komoditas bergerak hari ini",
+      "caption": "Harga komoditas bergerak",
+      "words": ["Harga", "komoditas", "bergerak"],
+      "wordTimings": [
+        { "word": "Harga", "startSec": 0, "endSec": 1 },
+        { "word": "komoditas", "startSec": 1, "endSec": 2 },
+        { "word": "bergerak", "startSec": 2, "endSec": 3 }
+      ],
+      "visual": "headline card + channel badge"
+    },
+    {
+      "id": "fact1",
+      "role": "fact",
+      "startSec": 3,
+      "endSec": 8,
+      "vo": "Pasar merespons data baru dengan cepat",
+      "caption": "Pasar merespons data baru",
+      "words": ["Pasar", "merespons", "data", "baru"],
+      "wordTimings": [
+        { "word": "Pasar", "startSec": 3, "endSec": 4.25 },
+        { "word": "merespons", "startSec": 4.25, "endSec": 5.5 },
+        { "word": "data", "startSec": 5.5, "endSec": 6.75 },
+        { "word": "baru", "startSec": 6.75, "endSec": 8 }
+      ],
+      "visual": "fact card + lower-third"
+    },
+    {
+      "id": "fact2",
+      "role": "fact",
+      "startSec": 8,
+      "endSec": 12,
+      "vo": "Pantau dampaknya ke konsumen",
+      "caption": "Dampak ke konsumen",
+      "words": ["Dampak", "ke", "konsumen"],
+      "wordTimings": [
+        { "word": "Dampak", "startSec": 8, "endSec": 9.3 },
+        { "word": "ke", "startSec": 9.3, "endSec": 10.2 },
+        { "word": "konsumen", "startSec": 10.2, "endSec": 12 }
+      ],
+      "visual": "fact card + lower-third"
+    },
+    {
+      "id": "outro",
+      "role": "outro",
+      "startSec": 12,
+      "endSec": 15,
+      "vo": "Ikuti untuk update berikutnya",
+      "caption": "Ikuti update berikutnya",
+      "words": ["Ikuti", "update", "berikutnya"],
+      "wordTimings": [
+        { "word": "Ikuti", "startSec": 12, "endSec": 13 },
+        { "word": "update", "startSec": 13, "endSec": 14 },
+        { "word": "berikutnya", "startSec": 14, "endSec": 15 }
+      ],
+      "visual": "CTA card"
+    }
+  ]
+}
