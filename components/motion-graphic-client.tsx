@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CaptionPanel } from "@/components/caption-panel";
 import { GenerateProgress } from "@/components/generate-progress";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,6 +65,7 @@ export function MotionGraphicClient() {
   const [error, setError] = useState<string | null>(null);
   const [brief, setBrief] = useState<MotionBrief | null>(null);
   const [summary, setSummary] = useState<SummarizeResult | null>(null);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
 
   const loading = phase === "scrape" || phase === "summarize" || phase === "compose";
 
@@ -78,6 +80,7 @@ export function MotionGraphicClient() {
     setError(null);
     setBrief(null);
     setSummary(null);
+    setSourceUrl(null);
 
     const trimmedUrl = url.trim();
     const text = pastedText.trim();
@@ -110,9 +113,11 @@ export function MotionGraphicClient() {
       const data = (await response.json()) as {
         brief: MotionBrief;
         summary: SummarizeResult;
+        sourceUrl?: string;
       };
       setBrief(data.brief);
       setSummary(data.summary);
+      setSourceUrl(data.sourceUrl || data.brief.sourceUrl || trimmedUrl || null);
       setPhase("ready");
     } catch (err) {
       setPhase("idle");
@@ -121,13 +126,15 @@ export function MotionGraphicClient() {
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+    <div className="space-y-5">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <Card>
         <CardHeader>
           <CardTitle>News → Motion Graphic</CardTitle>
           <CardDescription>
-            Scrape + foto berita + ringkas Gemini → brief VO/karaoke → render
-            Remotion lokal (tanpa CapCut). Foto ikut otomatis saat render.
+            Scrape + foto berita + ringkas Gemini → brief VO/karaoke + caption
+            IG/FB → render Remotion lokal (tanpa CapCut). Foto ikut otomatis
+            saat render.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -286,8 +293,8 @@ export function MotionGraphicClient() {
         <CardContent className="space-y-4">
           {!brief ? (
             <p className="text-sm text-zinc-500">
-              Hasil ringkasan, naskah VO, dan karaoke muncul di sini setelah
-              generate.
+              Hasil ringkasan, caption + hashtag, naskah VO, dan karaoke muncul
+              di sini setelah generate.
             </p>
           ) : (
             <>
@@ -391,6 +398,11 @@ export function MotionGraphicClient() {
           )}
         </CardContent>
       </Card>
+      </div>
+
+      {summary ? (
+        <CaptionPanel summarize={summary} sourceUrl={sourceUrl} />
+      ) : null}
     </div>
   );
 }

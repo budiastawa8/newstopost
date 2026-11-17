@@ -22,7 +22,7 @@ const MODES: { id: AppMode; label: string; blurb: string }[] = [
     id: "motion",
     label: "News → Motion Graphic",
     blurb:
-      "Tempel URL, generate brief VO + karaoke, render MP4 via Remotion (tanpa CapCut).",
+      "Tempel URL, generate brief VO + karaoke + caption IG/FB, render MP4 via Remotion (tanpa CapCut).",
   },
 ];
 
