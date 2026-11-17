@@ -19,13 +19,14 @@ const MAX_ATTEMPTS_PER_MODEL = isVercel ? 2 : 3;
 const PER_CALL_TIMEOUT_MS = isVercel ? 18_000 : 45_000;
 
 /**
- * Urutan model: hindari 3.8 sebagai default (sering high-demand → retry lama).
- * Override dengan GEMINI_MODEL di env.
+ * Urutan model: lite dulu (lebih stabil saat high-demand), lalu 3.6.
+ * Hindari 3.8 sebagai default (sering overload → retry lama).
+ * Override dengan GEMINI_MODEL di env (tetap dicoba pertama).
  */
 const MODEL_CANDIDATES = [
   process.env.GEMINI_MODEL?.trim(),
-  "gemini-3.6-flash",
   "gemini-3.5-flash-lite",
+  "gemini-3.6-flash",
   ...(isVercel ? [] : ["gemini-3.8-flash"]),
 ].filter((id, index, arr): id is string => Boolean(id) && arr.indexOf(id) === index);
 
@@ -110,10 +111,56 @@ function validateSummarizePayload(
 }
 
 function isRetryableGeminiError(error: unknown): boolean {
+  const status = (error as { status?: number })?.status;
+  if (status === 429 || status === 503 || status === 504) return true;
+
   const message =
     error instanceof Error ? error.message : String(error ?? "");
   return /503|429|high demand|unavailable|resource.?exhausted|try again|overloaded|quota|timeout|aborted/i.test(
     message
+  );
+}
+
+/**
+ * GoogleGenerativeAIFetchError juga punya `.status` numerik.
+ * Jangan rethrow mentah ke client — map ke pesan app yang jelas.
+ */
+function throwMappedGeminiFailure(
+  lastError: unknown,
+  options: {
+    overloadedMessage: string;
+    invalidMessage: string;
+  }
+): never {
+  const message =
+    lastError instanceof Error
+      ? lastError.message
+      : "Gagal memanggil Gemini.";
+
+  if (/API key|permission|401|403/i.test(message)) {
+    throw Object.assign(new Error("Autentikasi Gemini gagal."), {
+      status: 401,
+    });
+  }
+
+  if (isRetryableGeminiError(lastError)) {
+    throw Object.assign(new Error(options.overloadedMessage), {
+      status: 503,
+    });
+  }
+
+  const looksLikeValidation =
+    /paragraf|poin|Caption|Hashtag|Headline|JSON|Respons Gemini/i.test(
+      message
+    );
+
+  throw Object.assign(
+    new Error(
+      looksLikeValidation
+        ? `Respons Gemini tidak valid: ${message}`
+        : options.invalidMessage
+    ),
+    { status: 502 }
   );
 }
 
@@ -247,42 +294,11 @@ export async function summarizeArticle(
     }
   }
 
-  if ((lastError as { status?: number })?.status) {
-    throw lastError;
-  }
-
-  const message =
-    lastError instanceof Error
-      ? lastError.message
-      : "Gagal memanggil Gemini.";
-
-  if (/API key|permission|401|403/i.test(message)) {
-    throw Object.assign(new Error("Autentikasi Gemini gagal."), {
-      status: 401,
-    });
-  }
-
-  if (isRetryableGeminiError(lastError)) {
-    throw Object.assign(
-      new Error(
-        "Layanan Gemini sedang padat atau lambat. Coba lagi, atau di Vercel set GEMINI_MODEL=gemini-3.5-flash-lite."
-      ),
-      { status: 503 }
-    );
-  }
-
-  throw Object.assign(
-    new Error(
-      message.includes("paragraf") ||
-        message.includes("poin") ||
-        message.includes("Caption") ||
-        message.includes("Hashtag") ||
-        message.includes("JSON")
-        ? `Respons Gemini tidak valid: ${message}`
-        : "Gagal merangkum berita dengan Gemini."
-    ),
-    { status: 502 }
-  );
+  throwMappedGeminiFailure(lastError, {
+    overloadedMessage:
+      "Layanan Gemini sedang padat atau lambat. Coba lagi sebentar, atau set GEMINI_MODEL=gemini-3.5-flash-lite.",
+    invalidMessage: "Gagal merangkum berita dengan Gemini.",
+  });
 }
 
 const FREE_COPY_BRIEF_MAX = 500;
@@ -458,36 +474,9 @@ export async function generateFreeDesignCopy(input: {
     }
   }
 
-  if ((lastError as { status?: number })?.status) {
-    throw lastError;
-  }
-
-  const message =
-    lastError instanceof Error
-      ? lastError.message
-      : "Gagal memanggil Gemini.";
-
-  if (/API key|permission|401|403/i.test(message)) {
-    throw Object.assign(new Error("Autentikasi Gemini gagal."), {
-      status: 401,
-    });
-  }
-
-  if (isRetryableGeminiError(lastError)) {
-    throw Object.assign(
-      new Error(
-        "Layanan Gemini sedang padat atau lambat. Coba lagi sebentar."
-      ),
-      { status: 503 }
-    );
-  }
-
-  throw Object.assign(
-    new Error(
-      message.includes("Headline") || message.includes("JSON")
-        ? `Respons Gemini tidak valid: ${message}`
-        : "Gagal membuat copy desain dengan Gemini."
-    ),
-    { status: 502 }
-  );
+  throwMappedGeminiFailure(lastError, {
+    overloadedMessage:
+      "Layanan Gemini sedang padat atau lambat. Coba lagi sebentar.",
+    invalidMessage: "Gagal membuat copy desain dengan Gemini.",
+  });
 }
