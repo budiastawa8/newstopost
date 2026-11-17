@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { alignBriefWithSubtitles, scaleBriefToDuration } from "./lib/brief-timing.mjs";
+import { attachLocalImages } from "./lib/download-images.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -77,6 +78,18 @@ if (audioSrc) {
     }
   }
   console.log(`Audio sync → ${brief.durationSec.toFixed(2)}s · beats ${brief.beats.length}`);
+}
+
+{
+  const imageResult = await attachLocalImages(brief, publicDir);
+  brief = imageResult.brief;
+  if (imageResult.ok || imageResult.fail) {
+    console.log(
+      `Foto berita → ${imageResult.ok} siap, ${imageResult.fail} gagal (fallback gradient jika kosong)`,
+    );
+  } else {
+    console.log("Foto berita → tidak ada imageUrl di brief (teks-only)");
+  }
 }
 
 const props = { brief, audioSrc };

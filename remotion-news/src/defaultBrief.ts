@@ -14,6 +14,7 @@ export const DEFAULT_BRIEF: NewsBrief = {
   height: 1920,
   voText:
     "Sorotan: Update berita hari ini. Detail penting sedang berkembang. Ikuti untuk update berikutnya.",
+  images: [],
   beats: [
     {
       id: "hook",
@@ -30,6 +31,8 @@ export const DEFAULT_BRIEF: NewsBrief = {
         { word: "ini", startSec: 2.25, endSec: 3 },
       ],
       visual: "headline card + channel badge",
+      imageUrl: null,
+      imageSrc: null,
     },
     {
       id: "fact1",
@@ -46,6 +49,8 @@ export const DEFAULT_BRIEF: NewsBrief = {
         { word: "berkembang", startSec: 6.75, endSec: 8 },
       ],
       visual: "fact card + lower-third",
+      imageUrl: null,
+      imageSrc: null,
     },
     {
       id: "fact2",
@@ -61,6 +66,8 @@ export const DEFAULT_BRIEF: NewsBrief = {
         { word: "utamanya", startSec: 10.6, endSec: 12 },
       ],
       visual: "fact card + lower-third",
+      imageUrl: null,
+      imageSrc: null,
     },
     {
       id: "outro",
@@ -77,6 +84,8 @@ export const DEFAULT_BRIEF: NewsBrief = {
         { word: "berikutnya", startSec: 14.25, endSec: 15 },
       ],
       visual: "CTA card",
+      imageUrl: null,
+      imageSrc: null,
     },
   ],
 };

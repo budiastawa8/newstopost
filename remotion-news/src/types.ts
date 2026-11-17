@@ -14,6 +14,10 @@ export type NewsBeat = {
   words: string[];
   wordTimings: WordTiming[];
   visual?: string;
+  /** Remote URL from NewsToPost brief. */
+  imageUrl?: string | null;
+  /** Local file under public/ after render download (e.g. media/beat-hook.jpg). */
+  imageSrc?: string | null;
 };
 
 export type NewsBrief = {
@@ -29,6 +33,7 @@ export type NewsBrief = {
   width: number;
   height: number;
   voText: string;
+  images?: string[];
   beats: NewsBeat[];
   sourceUrl?: string;
   audioFileName?: string;

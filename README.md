@@ -48,6 +48,8 @@ py -3 -m pip install edge-tts
 
 Hasil: `remotion-news\out\news-motion.mp4`
 
+Foto berita (og:image + gambar artikel) ikut di `brief.json` dan diunduh otomatis saat render ke `remotion-news\public\media\`.
+
 Catatan: render video **tidak** jalan di Vercel — hanya generate brief. MP4 dibuat lokal.
 
 ## PWA

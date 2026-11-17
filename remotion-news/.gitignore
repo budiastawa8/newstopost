@@ -2,6 +2,7 @@ node_modules/
 out/
 public/voice.mp3
 public/voice.vtt
+public/media/
 .DS_Store
 *.log
 

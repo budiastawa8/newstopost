@@ -18,6 +18,10 @@ export type MotionBeat = {
   words: string[];
   wordTimings: WordTiming[];
   visual: string;
+  /** Remote image URL from scrape (filled when available). */
+  imageUrl?: string | null;
+  /** Local Remotion static path after render download (e.g. media/beat-hook.jpg). */
+  imageSrc?: string | null;
 };
 
 export type MotionBrief = {
@@ -35,11 +39,14 @@ export type MotionBrief = {
   width: number;
   height: number;
   voText: string;
+  /** Unique article image URLs used across beats. */
+  images: string[];
   beats: MotionBeat[];
   pipeline: {
     tts: string;
     render: string;
     karaoke: string;
+    images: string;
     noCapCut: true;
   };
 };
@@ -54,6 +61,8 @@ export type BuildMotionBriefInput = {
   aspect?: MotionAspect;
   style?: MotionStyle;
   tone?: MotionTone;
+  mainImage?: string | null;
+  images?: string[];
 };
 
 const STYLE_META: Record<MotionStyle, string> = {
@@ -128,6 +137,35 @@ export function aspectToSize(aspect: MotionAspect): {
   return { width: 1080, height: 1920 };
 }
 
+/** Deduplicate + keep http(s) only; main image first. */
+export function collectBriefImages(
+  mainImage?: string | null,
+  images?: string[]
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (raw: string | null | undefined) => {
+    const url = typeof raw === "string" ? raw.trim() : "";
+    if (!url || seen.has(url)) return;
+    if (!/^https?:\/\//i.test(url)) return;
+    seen.add(url);
+    out.push(url);
+  };
+  push(mainImage);
+  for (const img of images || []) push(img);
+  return out;
+}
+
+function assignBeatImage(
+  role: MotionBeat["role"],
+  indexAmongVisual: number,
+  pool: string[]
+): string | null {
+  if (!pool.length) return null;
+  if (role === "outro") return null;
+  return pool[indexAmongVisual % pool.length] || pool[0] || null;
+}
+
 export function buildMotionBrief(input: BuildMotionBriefInput): MotionBrief {
   const durationSec = Math.max(8, Number(input.durationSec) || 15);
   const aspect = input.aspect || "9:16";
@@ -139,6 +177,7 @@ export function buildMotionBrief(input: BuildMotionBriefInput): MotionBrief {
     "Ikuti untuk update berikutnya";
   const size = aspectToSize(aspect);
   const title = clipWords(input.title || "Update berita hari ini", 12);
+  const imagePool = collectBriefImages(input.mainImage, input.images);
   const facts = (input.points || [])
     .map((p) => p.trim())
     .filter(Boolean)
@@ -147,20 +186,28 @@ export function buildMotionBrief(input: BuildMotionBriefInput): MotionBrief {
     facts.push(facts[0] || "Detail lengkap menyusul dari sumber berita.");
   }
 
-  const rawBeats: Array<Omit<MotionBeat, "startSec" | "endSec" | "words" | "wordTimings" | "visual"> & { visual: string }> = [
+  const rawBeats: Array<
+    Omit<MotionBeat, "startSec" | "endSec" | "words" | "wordTimings">
+  > = [
     {
       id: "hook",
       role: "hook",
       vo: `Sorotan: ${title}`,
       caption: clipWords(title, 8),
-      visual: "headline card + channel badge",
+      visual: imagePool.length
+        ? "photo background + headline card"
+        : "headline card + channel badge",
+      imageUrl: assignBeatImage("hook", 0, imagePool),
     },
     ...facts.map((fact, i) => ({
       id: `fact${i + 1}`,
       role: "fact" as const,
       vo: fact,
       caption: clipWords(fact, 8),
-      visual: "fact card + lower-third",
+      visual: imagePool.length
+        ? "photo background + fact card"
+        : "fact card + lower-third",
+      imageUrl: assignBeatImage("fact", i + 1, imagePool),
     })),
     {
       id: "outro",
@@ -168,6 +215,7 @@ export function buildMotionBrief(input: BuildMotionBriefInput): MotionBrief {
       vo: cta,
       caption: clipWords(cta, 8),
       visual: "CTA card",
+      imageUrl: null,
     },
   ];
 
@@ -199,12 +247,15 @@ export function buildMotionBrief(input: BuildMotionBriefInput): MotionBrief {
     width: size.width,
     height: size.height,
     voText: beats.map((b) => b.vo).join(" "),
+    images: imagePool,
     beats,
     pipeline: {
       tts: "edge-tts → remotion-news/public/voice.mp3",
       render:
         "cd remotion-news && .\\render.ps1 -Brief ..\\path\\brief.json",
       karaoke: `style ${style}: ${STYLE_META[style]}`,
+      images:
+        "render.mjs downloads beat imageUrl → public/media/* then Remotion Img",
       noCapCut: true,
     },
   };

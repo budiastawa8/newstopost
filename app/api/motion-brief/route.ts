@@ -50,12 +50,16 @@ export async function POST(request: Request) {
     let title = typeof body.title === "string" ? body.title.trim() : "";
     let text = typeof body.text === "string" ? body.text.trim() : "";
     let sourceUrl = url;
+    let mainImage: string | null = null;
+    let images: string[] = [];
 
     if (url) {
       const scraped = await scrapeArticle(url);
       title = scraped.title || title;
       text = scraped.content || text;
       sourceUrl = scraped.sourceUrl || url;
+      mainImage = scraped.mainImage;
+      images = scraped.images || [];
     }
 
     if (!text) {
@@ -84,6 +88,8 @@ export async function POST(request: Request) {
       aspect: isAspect(body.aspect) ? body.aspect : "9:16",
       style: isStyle(body.style) ? body.style : "explainer",
       tone: isTone(body.tone) ? body.tone : "netral",
+      mainImage,
+      images,
     });
 
     return NextResponse.json({
@@ -91,6 +97,7 @@ export async function POST(request: Request) {
       summary,
       sourceTitle: title,
       sourceUrl,
+      imageCount: brief.images.length,
     });
   } catch (error) {
     return jsonError(error);

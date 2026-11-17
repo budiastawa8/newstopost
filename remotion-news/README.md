@@ -18,4 +18,6 @@ py -3 -m pip install edge-tts
 
 Hasil: `out/news-motion.mp4`
 
-Pipeline: TTS (edge-tts) → subtitle sync karaoke → Remotion MP4. Tanpa CapCut.
+Pipeline: TTS (edge-tts) → subtitle sync karaoke → download foto berita (`public/media/`) → Remotion MP4. Tanpa CapCut.
+
+Foto diambil otomatis dari `imageUrl` di brief (hasil scrape NewsToPost). Jika download gagal, beat itu fallback ke gradient.

@@ -126,8 +126,8 @@ export function MotionGraphicClient() {
         <CardHeader>
           <CardTitle>News → Motion Graphic</CardTitle>
           <CardDescription>
-            Scrape + ringkas Gemini → brief VO/karaoke → render Remotion lokal
-            (tanpa CapCut).
+            Scrape + foto berita + ringkas Gemini → brief VO/karaoke → render
+            Remotion lokal (tanpa CapCut). Foto ikut otomatis saat render.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -315,8 +315,35 @@ export function MotionGraphicClient() {
                 <p className="text-xs text-zinc-500">
                   {brief.durationSec}s · {brief.aspect} · {brief.style} ·{" "}
                   {brief.width}×{brief.height}
+                  {brief.images?.length
+                    ? ` · ${brief.images.length} foto berita`
+                    : " · tanpa foto (teks-only)"}
                 </p>
               </div>
+
+              {brief.images?.length ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Foto otomatis di video
+                  </p>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {brief.images.slice(0, 6).map((src) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={src}
+                        src={src}
+                        alt=""
+                        className="h-16 w-24 shrink-0 rounded-md border border-zinc-200 object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Foto ikut di brief.json dan diunduh otomatis saat{" "}
+                    <code>render.ps1</code>.
+                  </p>
+                </div>
+              ) : null}
 
               {summary ? (
                 <div className="space-y-2">
@@ -342,6 +369,7 @@ export function MotionGraphicClient() {
                   >
                     <p className="text-xs font-semibold text-teal-700">
                       [{beat.startSec}–{beat.endSec}s] {beat.id}
+                      {beat.imageUrl ? " · foto" : ""}
                     </p>
                     <p className="mt-1 text-sm text-zinc-800">{beat.vo}</p>
                     <p className="mt-1 text-xs text-zinc-500">

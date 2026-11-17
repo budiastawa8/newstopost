@@ -2,6 +2,7 @@ import React from "react";
 import {
   AbsoluteFill,
   Audio,
+  Img,
   interpolate,
   Sequence,
   spring,
@@ -20,39 +21,74 @@ const { fontFamily } = loadFont("normal", {
   ignoreTooManyRequestsWarning: true,
 });
 
+function resolveImageSrc(imageSrc?: string | null) {
+  const local = typeof imageSrc === "string" ? imageSrc.trim() : "";
+  if (local) return staticFile(local);
+  return null;
+}
+
 const BeatCard: React.FC<{
   title: string;
   subtitle: string;
   channel: string;
   theme: ReturnType<typeof themeForStyle>;
   role?: string;
-}> = ({ title, subtitle, channel, theme, role }) => {
+  imageSrc?: string | null;
+}> = ({ title, subtitle, channel, theme, role, imageSrc }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const enter = spring({ frame, fps, config: { damping: 16, stiffness: 120 } });
   const drift = Math.sin(frame / 28) * 8;
+  const photo = resolveImageSrc(imageSrc);
+  const kenBurns = interpolate(frame, [0, 90], [1.04, 1.12], {
+    extrapolateRight: "clamp",
+  });
 
   return (
     <AbsoluteFill style={{ fontFamily }}>
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: `radial-gradient(circle at 20% 15%, ${theme.accent}55, transparent 42%), linear-gradient(160deg, ${theme.bgA}, ${theme.bgB})`,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          width: 420,
-          height: 420,
-          right: -40,
-          top: 180 + drift,
-          borderRadius: "50%",
-          background: `radial-gradient(circle, ${theme.accent}33, transparent 70%)`,
-          filter: "blur(2px)",
-        }}
-      />
+      {photo ? (
+        <>
+          <AbsoluteFill>
+            <Img
+              src={photo}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                transform: `scale(${kenBurns})`,
+                transformOrigin: "center center",
+              }}
+            />
+          </AbsoluteFill>
+          <AbsoluteFill
+            style={{
+              background: `linear-gradient(180deg, rgba(2,6,23,0.55) 0%, rgba(2,6,23,0.35) 42%, rgba(2,6,23,0.78) 100%), radial-gradient(circle at 20% 15%, ${theme.accent}33, transparent 42%)`,
+            }}
+          />
+        </>
+      ) : (
+        <>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: `radial-gradient(circle at 20% 15%, ${theme.accent}55, transparent 42%), linear-gradient(160deg, ${theme.bgA}, ${theme.bgB})`,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              width: 420,
+              height: 420,
+              right: -40,
+              top: 180 + drift,
+              borderRadius: "50%",
+              background: `radial-gradient(circle, ${theme.accent}33, transparent 70%)`,
+              filter: "blur(2px)",
+            }}
+          />
+        </>
+      )}
 
       <div
         style={{
@@ -83,11 +119,12 @@ const BeatCard: React.FC<{
         </div>
         <div
           style={{
-            color: theme.muted,
+            color: photo ? "#f8fafc" : theme.muted,
             fontWeight: 700,
             fontSize: 24,
             textTransform: "uppercase",
             letterSpacing: "0.08em",
+            textShadow: photo ? "0 2px 12px rgba(0,0,0,0.45)" : undefined,
           }}
         >
           {role === "outro" ? "CTA" : role === "hook" ? "BREAKING" : "FAKTA"}
@@ -99,7 +136,7 @@ const BeatCard: React.FC<{
           position: "absolute",
           left: 56,
           right: 56,
-          top: "28%",
+          top: photo ? "52%" : "28%",
           opacity: enter,
           transform: `translateY(${(1 - enter) * 36}px)`,
         }}
@@ -111,6 +148,7 @@ const BeatCard: React.FC<{
             border: `2px solid ${theme.accent}`,
             padding: "36px 34px",
             boxShadow: "0 24px 60px rgba(0,0,0,0.25)",
+            backdropFilter: "blur(8px)",
           }}
         >
           <div
@@ -156,7 +194,10 @@ export const NewsMotion: React.FC<NewsMotionProps> = ({ brief, audioSrc }) => {
 
       {brief.beats.map((beat) => {
         const from = Math.round(beat.startSec * fps);
-        const durationInFrames = Math.max(1, Math.round((beat.endSec - beat.startSec) * fps));
+        const durationInFrames = Math.max(
+          1,
+          Math.round((beat.endSec - beat.startSec) * fps)
+        );
         return (
           <Sequence key={beat.id} from={from} durationInFrames={durationInFrames}>
             <BeatCard
@@ -165,6 +206,7 @@ export const NewsMotion: React.FC<NewsMotionProps> = ({ brief, audioSrc }) => {
               channel={brief.channel}
               theme={theme}
               role={beat.role}
+              imageSrc={beat.imageSrc}
             />
             <KaraokeCaption beat={beat} theme={theme} />
           </Sequence>
