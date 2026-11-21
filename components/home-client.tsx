@@ -12,6 +12,7 @@ import {
   PreviewSkeleton,
 } from "@/components/generate-progress";
 import { LogoUploader } from "@/components/logo-uploader";
+import { SlidePhotoManager } from "@/components/slide-photo-manager";
 import { StoryPreview } from "@/components/story-preview";
 import { TemplatePicker } from "@/components/template-picker";
 import { TitleHighlightPicker } from "@/components/title-highlight-picker";
@@ -47,6 +48,13 @@ import {
   saveStoredParagraphCount,
   type ParagraphCount,
 } from "@/lib/paragraph-count";
+import {
+  collectImagePool,
+  getCoverImageUrl,
+  movePhotoSlide,
+  setCoverImage,
+  setPhotoSlideImage,
+} from "@/lib/slide-photos";
 import {
   loadStoredIncludeStory,
   saveStoredIncludeStory,
@@ -110,6 +118,7 @@ export function HomeClient({
   const [phase, setPhase] = useState<GeneratePhase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [slides, setSlides] = useState<SlideModel[]>([]);
+  const [imagePool, setImagePool] = useState<string[]>([]);
   const [storyAsset, setStoryAsset] = useState<StoryAsset | null>(null);
   const [summarizeResult, setSummarizeResult] =
     useState<SummarizeResult | null>(null);
@@ -190,15 +199,30 @@ export function HomeClient({
     );
   }
 
+  function handleSetCover(imageUrl: string) {
+    setSlides((prev) => setCoverImage(prev, imageUrl));
+  }
+
+  function handleMovePhoto(photoOrdinal: number, direction: -1 | 1) {
+    setSlides((prev) => movePhotoSlide(prev, photoOrdinal, direction));
+  }
+
+  function handleSetPhoto(photoOrdinal: number, imageUrl: string) {
+    setSlides((prev) => setPhotoSlideImage(prev, photoOrdinal, imageUrl));
+  }
+
   const coverSlide = slides.find((s) => s.kind === "cover");
   const coverHighlights =
     coverSlide && coverSlide.kind === "cover"
       ? (coverSlide.titleHighlights ?? [])
       : [];
+  /** Story selalu ikut foto cover terkini (bukan salinan lama). */
+  const storyCoverImageUrl = getCoverImageUrl(slides);
 
   async function handleGenerate() {
     setError(null);
     setSlides([]);
+    setImagePool([]);
     setStoryAsset(null);
     setSummarizeResult(null);
     setSourceTitle(null);
@@ -256,13 +280,15 @@ export function HomeClient({
       });
 
       const nextSlides = buildSlides(scrape, summarize);
+      const nextPool = collectImagePool(scrape);
       const nextKey = `${scrape.sourceUrl}::${Date.now()}`;
       setSlides(nextSlides);
+      setImagePool(nextPool);
       setStoryAsset(
         includeStory
           ? {
               title: scrape.title,
-              imageUrl: scrape.mainImage,
+              imageUrl: getCoverImageUrl(nextSlides),
               titleHighlights: [],
             }
           : null
@@ -292,7 +318,7 @@ export function HomeClient({
       if (includeStory && storyAsset) {
         storyDataUrl = await captureStoryToPngDataUrl({
           title: storyAsset.title,
-          imageUrl: storyAsset.imageUrl,
+          imageUrl: storyCoverImageUrl,
           logoSrc,
           generationKey: generationKey || "story",
           template,
@@ -391,6 +417,18 @@ export function HomeClient({
               />
             ) : null}
 
+            {slides.length > 0 && imagePool.length > 0 ? (
+              <SlidePhotoManager
+                slides={slides}
+                imagePool={imagePool}
+                generationKey={generationKey || sourceUrl || undefined}
+                disabled={loading || exporting}
+                onSetCover={handleSetCover}
+                onMovePhoto={handleMovePhoto}
+                onSetPhoto={handleSetPhoto}
+              />
+            ) : null}
+
             {slides.length > 0 ? (
               <FontScaleControl
                 value={fontScale}
@@ -453,7 +491,7 @@ export function HomeClient({
                 {includeStory && storyAsset ? (
                   <StoryPreview
                     title={storyAsset.title}
-                    imageUrl={storyAsset.imageUrl}
+                    imageUrl={storyCoverImageUrl}
                     logoSrc={logoSrc}
                     template={template}
                     coverLabel={normalizeCoverLabel(coverLabel)}

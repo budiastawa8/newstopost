@@ -1,18 +1,7 @@
+import { normalizeImageUrl } from "@/lib/slide-photos";
 import type { ScrapeResult, SlideModel, SummarizeResult } from "@/lib/types";
 
 const MAX_TOTAL_SLIDES = 5;
-
-function normalizeUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    parsed.hash = "";
-    // Abaikan perbedaan ukuran WordPress (-1024x576 vs full)
-    const path = parsed.pathname.replace(/-\d+x\d+(?=\.[a-z]+$)/i, "");
-    return `${parsed.origin}${path}`;
-  } catch {
-    return url;
-  }
-}
 
 export function buildSlides(
   scrape: ScrapeResult,
@@ -32,7 +21,7 @@ export function buildSlides(
   ];
 
   const mainNormalized = scrape.mainImage
-    ? normalizeUrl(scrape.mainImage)
+    ? normalizeImageUrl(scrape.mainImage)
     : null;
 
   const seen = new Set<string>();
@@ -40,7 +29,7 @@ export function buildSlides(
 
   const extras: string[] = [];
   for (const img of scrape.images) {
-    const normalized = normalizeUrl(img);
+    const normalized = normalizeImageUrl(img);
     if (seen.has(normalized)) continue;
     seen.add(normalized);
     extras.push(img);
