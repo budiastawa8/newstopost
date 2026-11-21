@@ -5,6 +5,10 @@ import {
   type ParagraphCount,
 } from "@/lib/paragraph-count";
 import { isVercel, SUMMARIZE_BUDGET_MS } from "@/lib/runtime";
+import {
+  resolveMotionPacing,
+  type MotionPacing,
+} from "@/lib/motion-brief";
 import type {
   FreeDesignCopyResult,
   FreeDesignCopyTone,
@@ -375,10 +379,10 @@ function buildMotionCopyPrompt(input: {
   title?: string;
   tone: MotionCopyTone;
   cta: string;
-  durationSec: number;
-  factCount: number;
+  pacing: MotionPacing;
 }): string {
-  const { truncated, title, tone, cta, durationSec, factCount } = input;
+  const { truncated, title, tone, cta, pacing } = input;
+  const factCount = pacing.factCount;
   const factsExample = Array.from(
     { length: factCount },
     () => `{"vo":"...","onScreen":"..."}`
@@ -393,23 +397,25 @@ function buildMotionCopyPrompt(input: {
     "Buat SEMUA teks berikut dalam Bahasa Indonesia dari artikel yang diberikan.",
     "",
     "A) Ringkasan & caption sosial (untuk panel caption IG/FB):",
-    `1) TEPAT ${factCount} poin ringkasan faktual (tiap poin 1–2 kalimat lengkap, ~20–40 kata).`,
+    `1) TEPAT ${factCount} poin ringkasan faktual (tiap poin 1–2 kalimat lengkap, ~20–45 kata).`,
     "2) Satu caption siap posting IG/FB (2–4 kalimat, boleh 1–2 emoji, tanpa hashtag di dalam caption).",
     "3) 5–12 hashtag relevan (diawali #).",
     "",
     "B) Naskah motion graphic (untuk ElevenLabs + kartu video) — WAJIB kalimat lengkap, jangan potong di tengah klausa:",
     "4) hook:",
     "   - onScreen = judul berita PERSIS seperti yang diberikan (jangan dipotong).",
-    "   - vo = 1–2 kalimat bicara natural yang menyampaikan inti judul (boleh parafrase agar enak dibaca keras). Akhiri dengan titik.",
+    `   - vo = 1–2 kalimat bicara natural (~${pacing.hookVoWords} kata) yang menyampaikan inti judul (boleh parafrase). Akhiri dengan titik.`,
     `5) facts: tepat ${factCount} item. Tiap item:`,
-    "   - vo = 1–2 kalimat lengkap siap voiceover (~12–28 kata). Faktual, selesai, tidak menggantung.",
+    `   - vo = 1–2 kalimat lengkap siap voiceover (~${pacing.factVoWords} kata). Faktual, selesai, tidak menggantung.`,
     "   - onScreen = frasa kartu padat (~6–14 kata) dengan makna utuh (bukan potongan klausa).",
     "6) outro:",
-    `   - vo = ajakan natural berbasis CTA user: "${cta}" (1 kalimat lengkap).`,
+    `   - vo = ajakan natural berbasis CTA user: "${cta}" (~${pacing.outroVoWords} kata, 1 kalimat lengkap).`,
     "   - onScreen = CTA singkat untuk kartu akhir.",
     "",
     `Tone naskah: ${tone}.`,
-    `Target durasi video sekitar ${durationSec} detik — jaga VO ringkas agar muat.`,
+    `Target durasi video: ${pacing.durationSec} detik.`,
+    pacing.guidance,
+    `Panjang TOTAL semua VO (hook + semua facts + outro) harus sekitar ${pacing.targetVoWordsMin}–${pacing.targetVoWordsMax} kata — sesuaikan dengan durasi, jangan terlalu pendek untuk durasi panjang.`,
     "Jangan pakai markdown, numbering, atau elipsis (…) di akhir kalimat VO.",
     "",
     `Output HANYA JSON murni: {"points":[${pointsExample}],"caption":"...","hashtags":["#a","#b"],"hook":{"vo":"...","onScreen":"..."},"facts":[${factsExample}],"outro":{"vo":"...","onScreen":"..."}}`,
@@ -486,12 +492,15 @@ export async function generateMotionCopy(input: {
     throw Object.assign(new Error("Teks berita kosong."), { status: 400 });
   }
 
-  const factCount = normalizeParagraphCount(input.factCount ?? 3);
   const tone = normalizeMotionTone(input.tone);
   const cta =
     (input.cta || "Ikuti untuk update berikutnya").trim() ||
     "Ikuti untuk update berikutnya";
   const durationSec = Math.max(8, Number(input.durationSec) || 15);
+  const pacing = resolveMotionPacing(durationSec);
+  const factCount = normalizeParagraphCount(
+    input.factCount ?? pacing.factCount
+  );
   const title = input.title?.trim() || undefined;
   const truncated = text.slice(0, MAX_TEXT_CHARS);
   const apiKey = getApiKey();
@@ -501,8 +510,7 @@ export async function generateMotionCopy(input: {
     title,
     tone,
     cta,
-    durationSec,
-    factCount,
+    pacing: { ...pacing, factCount },
   });
   const deadline = Date.now() + SUMMARIZE_BUDGET_MS;
 

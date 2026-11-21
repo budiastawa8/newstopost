@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  MOTION_DURATION_OPTIONS,
   claudeMotionBriefFileName,
   motionBriefFileName,
   toClaudeMotionBrief,
@@ -187,7 +188,7 @@ export function MotionGraphicClient() {
             <div className="space-y-2">
               <Label>Durasi</Label>
               <div className="flex flex-wrap gap-2">
-                {[15, 30, 45, 60].map((value) => (
+                {MOTION_DURATION_OPTIONS.map((value) => (
                   <button
                     key={value}
                     type="button"
@@ -204,6 +205,10 @@ export function MotionGraphicClient() {
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-zinc-500">
+                Naskah VO Gemini menyesuaikan durasi (lebih panjang untuk 60s /
+                90s).
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Rasio</Label>
@@ -379,6 +384,10 @@ export function MotionGraphicClient() {
                   {brief.images?.length
                     ? ` · ${brief.images.length} foto berita`
                     : " · tanpa foto (teks-only)"}
+                  {` · ${brief.beats.filter((b) => b.role === "fact").length} fakta · VO ~${brief.voText
+                    .trim()
+                    .split(/\s+/)
+                    .filter(Boolean).length} kata`}
                 </p>
               </div>
 

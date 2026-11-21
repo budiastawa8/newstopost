@@ -1,6 +1,99 @@
+import type { ParagraphCount } from "@/lib/paragraph-count";
+
 export type MotionStyle = "explainer" | "ticker" | "minimal";
 export type MotionTone = "netral" | "santai" | "tegas";
 export type MotionAspect = "9:16" | "1:1" | "16:9" | "4:5";
+
+/** Opsi durasi di UI Motion Graphic. */
+export const MOTION_DURATION_OPTIONS = [15, 30, 45, 60, 90] as const;
+export type MotionDurationSec = (typeof MOTION_DURATION_OPTIONS)[number];
+
+export type MotionPacing = {
+  durationSec: number;
+  factCount: ParagraphCount;
+  /** Total kata VO (hook+facts+outro) yang dituju. */
+  targetVoWordsMin: number;
+  targetVoWordsMax: number;
+  hookVoWords: string;
+  factVoWords: string;
+  outroVoWords: string;
+  guidance: string;
+};
+
+/** Panjang naskah & jumlah fakta menyesuaikan durasi video. */
+export function resolveMotionPacing(durationSec: number): MotionPacing {
+  const d = Math.max(8, Math.round(Number(durationSec) || 15));
+  if (d <= 20) {
+    return {
+      durationSec: d,
+      factCount: 2,
+      targetVoWordsMin: 28,
+      targetVoWordsMax: 42,
+      hookVoWords: "8–14",
+      factVoWords: "8–14",
+      outroVoWords: "5–9",
+      guidance:
+        "Video pendek (~15s): VO sangat ringkas. Tiap beat 1 kalimat pendek yang lengkap.",
+    };
+  }
+  if (d <= 35) {
+    return {
+      durationSec: d,
+      factCount: 3,
+      targetVoWordsMin: 55,
+      targetVoWordsMax: 78,
+      hookVoWords: "10–16",
+      factVoWords: "12–20",
+      outroVoWords: "6–10",
+      guidance:
+        "Video ~30s: VO sedang. Hook singkat, tiap fakta 1–2 kalimat lengkap.",
+    };
+  }
+  if (d <= 50) {
+    return {
+      durationSec: d,
+      factCount: 3,
+      targetVoWordsMin: 85,
+      targetVoWordsMax: 115,
+      hookVoWords: "12–18",
+      factVoWords: "18–28",
+      outroVoWords: "8–12",
+      guidance:
+        "Video ~45s: kembangkan konteks. Tiap fakta boleh 2 kalimat faktual lengkap.",
+    };
+  }
+  if (d <= 75) {
+    return {
+      durationSec: d,
+      factCount: 3,
+      targetVoWordsMin: 115,
+      targetVoWordsMax: 155,
+      hookVoWords: "14–22",
+      factVoWords: "24–38",
+      outroVoWords: "8–14",
+      guidance:
+        "Video ~60s: naskah lebih panjang. Tambah detail/latar di tiap fakta (tetap kalimat lengkap, tanpa menggantung).",
+    };
+  }
+  return {
+    durationSec: d,
+    factCount: 4,
+    targetVoWordsMin: 165,
+    targetVoWordsMax: 220,
+    hookVoWords: "16–24",
+    factVoWords: "28–42",
+    outroVoWords: "10–16",
+    guidance:
+      "Video ~90s: naskah paling lengkap. 4 fakta berurutan (latar → peristiwa → dampak/reaksi → konteks lanjutan), tiap VO 2 kalimat padat.",
+  };
+}
+
+export function normalizeMotionDurationSec(value: unknown): number {
+  const n = Math.round(Number(value));
+  if ((MOTION_DURATION_OPTIONS as readonly number[]).includes(n)) return n;
+  if (Number.isFinite(n) && n >= 8) return Math.min(120, Math.max(8, n));
+  return 15;
+}
 
 export type WordTiming = {
   word: string;
@@ -297,7 +390,7 @@ function buildProductionGuide(input: {
     output: `MP4 ${aspect} (${width}×${height}), style ${style}, channel "${channel}".`,
     promptHint: [
       "Buat motion graphic berita dari brief JSON ini.",
-      "1) Generate voiceover ElevenLabs dari voText.",
+      "1) Generate voiceover ElevenLabs dari voText (panjang naskah sudah disesuaikan target durasi).",
       "2) Pakai / minta foto dari images dan imageUrl per beat.",
       "3) Sesuaikan durasi tiap beat ke audio final (abaikan estimasi detik jika tidak cocok).",
       "4) Teks on-screen dari onScreen; branding channel; CTA di outro.",

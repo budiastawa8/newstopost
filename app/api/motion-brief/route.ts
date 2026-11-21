@@ -3,6 +3,7 @@ import { jsonError } from "@/lib/api-error";
 import { generateMotionCopy } from "@/lib/gemini";
 import {
   buildMotionBrief,
+  normalizeMotionDurationSec,
   type MotionAspect,
   type MotionStyle,
   type MotionTone,
@@ -78,8 +79,7 @@ export async function POST(request: Request) {
 
     const tone = isTone(body.tone) ? body.tone : "netral";
     const cta = typeof body.cta === "string" ? body.cta : undefined;
-    const durationSec =
-      typeof body.durationSec === "number" ? body.durationSec : undefined;
+    const durationSec = normalizeMotionDurationSec(body.durationSec);
 
     const copy = await generateMotionCopy({
       text,
@@ -87,7 +87,6 @@ export async function POST(request: Request) {
       tone,
       cta,
       durationSec,
-      factCount: 3,
     });
 
     const summary: SummarizeResult = {
@@ -108,7 +107,7 @@ export async function POST(request: Request) {
       sourceUrl,
       channel: body.channel,
       cta: body.cta,
-      durationSec: body.durationSec,
+      durationSec,
       aspect: isAspect(body.aspect) ? body.aspect : "9:16",
       style: isStyle(body.style) ? body.style : "explainer",
       tone,
