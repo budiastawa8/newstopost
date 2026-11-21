@@ -27,6 +27,59 @@ function resolveImageSrc(imageSrc?: string | null) {
   return null;
 }
 
+function estimateWrappedLines(text: string, fontSize: number, textWidth: number) {
+  const words = text.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  if (!words.length) return 1;
+  const charWidth = fontSize * 0.62;
+  const space = charWidth * 0.35;
+  let lines = 1;
+  let used = 0;
+  for (const word of words) {
+    const wordWidth = Math.max(charWidth, word.length * charWidth);
+    if (used > 0 && used + space + wordWidth > textWidth) {
+      lines += 1;
+      used = wordWidth;
+    } else {
+      used += (used > 0 ? space : 0) + wordWidth;
+    }
+  }
+  return lines;
+}
+
+/** Shrink and lift a long headline so it stays above the karaoke bar. */
+function fitHeadline(input: {
+  title: string;
+  role?: string;
+  width: number;
+  height: number;
+  hasPhoto: boolean;
+}) {
+  const base = input.role === "hook" ? 64 : 52;
+  const min = 32;
+  const textWidth = Math.max(240, input.width - 56 * 2 - 34 * 2);
+  const karaokeWidth = Math.max(240, input.width * 0.92 - 56);
+  const karaokeLines = estimateWrappedLines(input.title, 46, karaokeWidth);
+  const bottomReserve = 160 + 44 + karaokeLines * 46 * 1.25 + 28;
+  const topMin = 148;
+  const available = Math.max(140, input.height - topMin - bottomReserve);
+
+  const blockHeight = (fontSize: number) => {
+    const lines = estimateWrappedLines(input.title, fontSize, textWidth);
+    return 22 + 14 + 72 + lines * fontSize * 1.15;
+  };
+
+  let fontSize = base;
+  while (fontSize > min && blockHeight(fontSize) > available) {
+    fontSize -= 2;
+  }
+
+  const used = blockHeight(fontSize);
+  const preferred = input.hasPhoto ? input.height * 0.4 : input.height * 0.24;
+  const maxTop = input.height - bottomReserve - used;
+  const top = Math.max(topMin, Math.min(preferred, maxTop));
+  return { fontSize, top };
+}
+
 const BeatCard: React.FC<{
   title: string;
   subtitle: string;
@@ -36,10 +89,17 @@ const BeatCard: React.FC<{
   imageSrc?: string | null;
 }> = ({ title, subtitle, channel, theme, role, imageSrc }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
   const enter = spring({ frame, fps, config: { damping: 16, stiffness: 120 } });
   const drift = Math.sin(frame / 28) * 8;
   const photo = resolveImageSrc(imageSrc);
+  const headline = fitHeadline({
+    title,
+    role,
+    width,
+    height,
+    hasPhoto: Boolean(photo),
+  });
   const kenBurns = interpolate(frame, [0, 90], [1.04, 1.12], {
     extrapolateRight: "clamp",
   });
@@ -136,7 +196,7 @@ const BeatCard: React.FC<{
           position: "absolute",
           left: 56,
           right: 56,
-          top: photo ? "52%" : "28%",
+          top: headline.top,
           opacity: enter,
           transform: `translateY(${(1 - enter) * 36}px)`,
         }}
@@ -166,10 +226,11 @@ const BeatCard: React.FC<{
           <div
             style={{
               color: theme.ink,
-              fontSize: role === "hook" ? 64 : 52,
+              fontSize: headline.fontSize,
               fontWeight: 800,
               lineHeight: 1.15,
               letterSpacing: "-0.03em",
+              overflowWrap: "break-word",
             }}
           >
             {title}

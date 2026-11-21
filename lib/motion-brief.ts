@@ -86,13 +86,27 @@ function wordsFromCaption(text: string): string[] {
     .filter(Boolean);
 }
 
-function allocateBeatWindows(durationSec: number, beatCount: number) {
+/** Seconds needed to speak a line without the next beat stealing the last words. */
+function speechSeconds(text: string): number {
+  const count = Math.max(1, wordsFromCaption(text).length);
+  return Number((count / 2.2 + 0.55).toFixed(2));
+}
+
+function allocateBeatWindows(
+  durationSec: number,
+  beatCount: number,
+  hookSec?: number
+) {
   const total = Math.max(8, durationSec);
   const count = Math.max(2, beatCount);
-  const hook = Math.min(3, Math.max(2, Math.round(total * 0.18)));
   const outro = Math.min(4, Math.max(2, Math.round(total * 0.2)));
-  const middleBudget = Math.max(total - hook - outro, count - 2);
   const middleCount = Math.max(1, count - 2);
+  const minMiddle = middleCount * 1.4;
+  const maxHook = Math.max(2.2, Number((total - outro - minMiddle).toFixed(2)));
+  const wanted =
+    hookSec ?? Math.min(3, Math.max(2, Math.round(total * 0.18)));
+  const hook = Math.min(maxHook, Math.max(2.2, wanted));
+  const middleBudget = Math.max(total - hook - outro, middleCount * 1.2);
   const slice = middleBudget / middleCount;
   const windows = [{ startSec: 0, endSec: hook }];
   let cursor = hook;
@@ -176,7 +190,9 @@ export function buildMotionBrief(input: BuildMotionBriefInput): MotionBrief {
     (input.cta || "Ikuti untuk update berikutnya").trim() ||
     "Ikuti untuk update berikutnya";
   const size = aspectToSize(aspect);
-  const title = clipWords(input.title || "Update berita hari ini", 12);
+  const title =
+    (input.title || "Update berita hari ini").replace(/\s+/g, " ").trim() ||
+    "Update berita hari ini";
   const imagePool = collectBriefImages(input.mainImage, input.images);
   const facts = (input.points || [])
     .map((p) => p.trim())
@@ -193,7 +209,7 @@ export function buildMotionBrief(input: BuildMotionBriefInput): MotionBrief {
       id: "hook",
       role: "hook",
       vo: `Sorotan: ${title}`,
-      caption: clipWords(title, 8),
+      caption: title,
       visual: imagePool.length
         ? "photo background + headline card"
         : "headline card + channel badge",
@@ -219,7 +235,11 @@ export function buildMotionBrief(input: BuildMotionBriefInput): MotionBrief {
     },
   ];
 
-  const windows = allocateBeatWindows(durationSec, rawBeats.length);
+  const windows = allocateBeatWindows(
+    durationSec,
+    rawBeats.length,
+    speechSeconds(rawBeats[0]?.vo || title)
+  );
   const beats: MotionBeat[] = rawBeats.map((beat, i) => {
     const win = windows[i] || windows[windows.length - 1]!;
     const words = wordsFromCaption(beat.caption);

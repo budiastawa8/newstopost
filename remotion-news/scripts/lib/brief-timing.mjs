@@ -111,13 +111,17 @@ export function applyWordTimingsToBeats(brief, wordTimings) {
         endSec: Number((startSec + (i + 1) * each).toFixed(3)),
       }));
     }
+    const spoken = slice.map((w) => w.word).join(" ");
     return {
       ...beat,
       startSec,
       endSec: index === arr.length - 1 ? next.durationSec : endSec,
       words: slice.map((w) => w.word),
       wordTimings: slice,
-      caption: slice.map((w) => w.word).join(" ") || beat.caption,
+      caption:
+        beat.role === "hook" && beat.caption
+          ? beat.caption
+          : spoken || beat.caption,
     };
   });
   return next;
