@@ -8,6 +8,8 @@ import { isVercel, SUMMARIZE_BUDGET_MS } from "@/lib/runtime";
 import type {
   FreeDesignCopyResult,
   FreeDesignCopyTone,
+  MotionCopyResult,
+  MotionNarrationLine,
   SummarizeResult,
 } from "@/lib/types";
 
@@ -150,7 +152,7 @@ function throwMappedGeminiFailure(
   }
 
   const looksLikeValidation =
-    /paragraf|poin|Caption|Hashtag|Headline|JSON|Respons Gemini/i.test(
+    /paragraf|poin|Caption|Hashtag|Headline|JSON|Respons Gemini|hook|facts|outro|\.vo|onScreen|menggantung/i.test(
       message
     );
 
@@ -298,6 +300,249 @@ export async function summarizeArticle(
     overloadedMessage:
       "Layanan Gemini sedang padat atau lambat. Coba lagi sebentar, atau set GEMINI_MODEL=gemini-3.5-flash-lite.",
     invalidMessage: "Gagal merangkum berita dengan Gemini.",
+  });
+}
+
+type MotionCopyTone = "netral" | "santai" | "tegas";
+
+function normalizeMotionTone(value: unknown): MotionCopyTone {
+  if (value === "santai" || value === "tegas" || value === "netral") {
+    return value;
+  }
+  return "netral";
+}
+
+function cleanNarrationLine(
+  value: unknown,
+  field: string
+): MotionNarrationLine {
+  if (!value || typeof value !== "object") {
+    throw new Error(`Field ${field} tidak valid.`);
+  }
+  const record = value as { vo?: unknown; onScreen?: unknown };
+  const vo = typeof record.vo === "string" ? record.vo.replace(/\s+/g, " ").trim() : "";
+  const onScreen =
+    typeof record.onScreen === "string"
+      ? record.onScreen.replace(/\s+/g, " ").trim()
+      : "";
+  if (vo.length < 8) {
+    throw new Error(`Field ${field}.vo terlalu pendek.`);
+  }
+  if (onScreen.length < 4) {
+    throw new Error(`Field ${field}.onScreen terlalu pendek.`);
+  }
+  if (/…|\.\.\.$/.test(vo) || /,$/.test(vo)) {
+    throw new Error(`Field ${field}.vo terasa menggantung / tidak lengkap.`);
+  }
+  const voClosed = /[.!?]$/.test(vo) ? vo : `${vo}.`;
+  return { vo: voClosed, onScreen };
+}
+
+function validateMotionCopyPayload(
+  value: unknown,
+  factCount: ParagraphCount
+): MotionCopyResult {
+  const summary = validateSummarizePayload(value, factCount);
+  if (!value || typeof value !== "object") {
+    throw new Error("Respons Gemini bukan objek JSON.");
+  }
+  const record = value as {
+    hook?: unknown;
+    facts?: unknown;
+    outro?: unknown;
+  };
+  const hook = cleanNarrationLine(record.hook, "hook");
+  if (!Array.isArray(record.facts)) {
+    throw new Error("Field facts tidak ditemukan.");
+  }
+  const facts = record.facts
+    .slice(0, factCount)
+    .map((item, i) => cleanNarrationLine(item, `facts[${i}]`));
+  if (facts.length !== factCount) {
+    throw new Error(`Field facts harus berisi tepat ${factCount} item.`);
+  }
+  const outro = cleanNarrationLine(record.outro, "outro");
+  return {
+    ...summary,
+    hook,
+    facts,
+    outro,
+  };
+}
+
+function buildMotionCopyPrompt(input: {
+  truncated: string;
+  title?: string;
+  tone: MotionCopyTone;
+  cta: string;
+  durationSec: number;
+  factCount: number;
+}): string {
+  const { truncated, title, tone, cta, durationSec, factCount } = input;
+  const factsExample = Array.from(
+    { length: factCount },
+    () => `{"vo":"...","onScreen":"..."}`
+  ).join(",");
+  const pointsExample = Array.from(
+    { length: factCount },
+    (_, i) => `"ringkasan ${i + 1}"`
+  ).join(",");
+
+  return [
+    "Kamu adalah penulis naskah motion graphic berita + editor media sosial.",
+    "Buat SEMUA teks berikut dalam Bahasa Indonesia dari artikel yang diberikan.",
+    "",
+    "A) Ringkasan & caption sosial (untuk panel caption IG/FB):",
+    `1) TEPAT ${factCount} poin ringkasan faktual (tiap poin 1–2 kalimat lengkap, ~20–40 kata).`,
+    "2) Satu caption siap posting IG/FB (2–4 kalimat, boleh 1–2 emoji, tanpa hashtag di dalam caption).",
+    "3) 5–12 hashtag relevan (diawali #).",
+    "",
+    "B) Naskah motion graphic (untuk ElevenLabs + kartu video) — WAJIB kalimat lengkap, jangan potong di tengah klausa:",
+    "4) hook:",
+    "   - onScreen = judul berita PERSIS seperti yang diberikan (jangan dipotong).",
+    "   - vo = 1–2 kalimat bicara natural yang menyampaikan inti judul (boleh parafrase agar enak dibaca keras). Akhiri dengan titik.",
+    `5) facts: tepat ${factCount} item. Tiap item:`,
+    "   - vo = 1–2 kalimat lengkap siap voiceover (~12–28 kata). Faktual, selesai, tidak menggantung.",
+    "   - onScreen = frasa kartu padat (~6–14 kata) dengan makna utuh (bukan potongan klausa).",
+    "6) outro:",
+    `   - vo = ajakan natural berbasis CTA user: "${cta}" (1 kalimat lengkap).`,
+    "   - onScreen = CTA singkat untuk kartu akhir.",
+    "",
+    `Tone naskah: ${tone}.`,
+    `Target durasi video sekitar ${durationSec} detik — jaga VO ringkas agar muat.`,
+    "Jangan pakai markdown, numbering, atau elipsis (…) di akhir kalimat VO.",
+    "",
+    `Output HANYA JSON murni: {"points":[${pointsExample}],"caption":"...","hashtags":["#a","#b"],"hook":{"vo":"...","onScreen":"..."},"facts":[${factsExample}],"outro":{"vo":"...","onScreen":"..."}}`,
+    title ? `Judul berita (pakai PERSIS di hook.onScreen): ${title}` : "",
+    "Teks berita:",
+    truncated,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+async function generateMotionCopyWithModel(
+  genAI: GoogleGenerativeAI,
+  modelId: string,
+  prompt: string,
+  factCount: ParagraphCount,
+  deadline: number
+): Promise<MotionCopyResult> {
+  const model = genAI.getGenerativeModel({
+    model: modelId,
+    generationConfig: {
+      temperature: 0.4,
+      responseMimeType: "application/json",
+    },
+  });
+
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS_PER_MODEL; attempt += 1) {
+    const left = remainingMs(deadline);
+    if (left < 2_000) {
+      throw Object.assign(
+        new Error(
+          "Waktu proses Gemini habis (batas Vercel). Coba lagi, atau set GEMINI_MODEL=gemini-3.5-flash-lite."
+        ),
+        { status: 504 }
+      );
+    }
+
+    try {
+      const result = await model.generateContent(prompt, {
+        timeout: Math.min(PER_CALL_TIMEOUT_MS, left - 500),
+      });
+      const raw = result.response.text();
+      const parsed = extractJsonObject(raw);
+      return validateMotionCopyPayload(parsed, factCount);
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableGeminiError(error) || attempt === MAX_ATTEMPTS_PER_MODEL) {
+        throw error;
+      }
+      const delay = Math.min(
+        remainingMs(deadline) - 1_500,
+        400 * 2 ** (attempt - 1) + Math.floor(Math.random() * 200)
+      );
+      if (delay < 200) throw error;
+      await sleep(delay);
+    }
+  }
+
+  throw lastError;
+}
+
+export async function generateMotionCopy(input: {
+  text: string;
+  title?: string;
+  tone?: MotionCopyTone | string;
+  cta?: string;
+  durationSec?: number;
+  factCount?: number;
+}): Promise<MotionCopyResult> {
+  const text = input.text.trim();
+  if (!text) {
+    throw Object.assign(new Error("Teks berita kosong."), { status: 400 });
+  }
+
+  const factCount = normalizeParagraphCount(input.factCount ?? 3);
+  const tone = normalizeMotionTone(input.tone);
+  const cta =
+    (input.cta || "Ikuti untuk update berikutnya").trim() ||
+    "Ikuti untuk update berikutnya";
+  const durationSec = Math.max(8, Number(input.durationSec) || 15);
+  const title = input.title?.trim() || undefined;
+  const truncated = text.slice(0, MAX_TEXT_CHARS);
+  const apiKey = getApiKey();
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const prompt = buildMotionCopyPrompt({
+    truncated,
+    title,
+    tone,
+    cta,
+    durationSec,
+    factCount,
+  });
+  const deadline = Date.now() + SUMMARIZE_BUDGET_MS;
+
+  let lastError: unknown;
+
+  for (const modelId of MODEL_CANDIDATES) {
+    if (remainingMs(deadline) < 2_000) break;
+    try {
+      const copy = await generateMotionCopyWithModel(
+        genAI,
+        modelId,
+        prompt,
+        factCount,
+        deadline
+      );
+      if (title) {
+        copy.hook = {
+          ...copy.hook,
+          onScreen: title,
+        };
+      }
+      return copy;
+    } catch (error) {
+      lastError = error;
+      if ((error as { status?: number }).status === 504) {
+        throw error;
+      }
+      if ((error as { status?: number }).status === 400) {
+        throw error;
+      }
+      if (!isRetryableGeminiError(error)) {
+        break;
+      }
+    }
+  }
+
+  throwMappedGeminiFailure(lastError, {
+    overloadedMessage:
+      "Layanan Gemini sedang padat atau lambat. Coba lagi sebentar, atau set GEMINI_MODEL=gemini-3.5-flash-lite.",
+    invalidMessage: "Gagal membuat naskah Motion Graphic dengan Gemini.",
   });
 }
 

@@ -36,7 +36,7 @@ Buka [http://localhost:3000](http://localhost:3000).
 
 1. Pilih tab **News → Motion Graphic**
 2. Tempel URL (atau teks berita) → **Generate Motion Brief**
-3. **Unduh brief untuk Claude** (disarankan) → unggah ke Claude + naskah `voText` di ElevenLabs + foto dari `images` / `imageUrl`
+3. **Unduh brief untuk Claude** (disarankan) → unggah ke Claude + naskah `voText` (dari Gemini) di ElevenLabs + foto dari `images` / `imageUrl`
 4. Opsional Remotion lokal: **Unduh brief Remotion** lalu:
 
 ```powershell

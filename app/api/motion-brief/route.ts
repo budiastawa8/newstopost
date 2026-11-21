@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { jsonError } from "@/lib/api-error";
-import { summarizeArticle } from "@/lib/gemini";
-import { buildMotionBrief, type MotionAspect, type MotionStyle, type MotionTone } from "@/lib/motion-brief";
-import { normalizeParagraphCount } from "@/lib/paragraph-count";
+import { generateMotionCopy } from "@/lib/gemini";
+import {
+  buildMotionBrief,
+  type MotionAspect,
+  type MotionStyle,
+  type MotionTone,
+} from "@/lib/motion-brief";
 import { scrapeArticle } from "@/lib/scrape";
-import type { ApiErrorBody } from "@/lib/types";
+import type { ApiErrorBody, SummarizeResult } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -72,22 +76,42 @@ export async function POST(request: Request) {
       );
     }
 
-    const summary = await summarizeArticle(
+    const tone = isTone(body.tone) ? body.tone : "netral";
+    const cta = typeof body.cta === "string" ? body.cta : undefined;
+    const durationSec =
+      typeof body.durationSec === "number" ? body.durationSec : undefined;
+
+    const copy = await generateMotionCopy({
       text,
-      title || undefined,
-      normalizeParagraphCount(3)
-    );
+      title: title || undefined,
+      tone,
+      cta,
+      durationSec,
+      factCount: 3,
+    });
+
+    const summary: SummarizeResult = {
+      points: copy.points,
+      caption: copy.caption,
+      hashtags: copy.hashtags,
+      titleHighlights: copy.titleHighlights,
+    };
 
     const brief = buildMotionBrief({
-      title: title || summary.points[0] || "Update berita",
-      points: summary.points,
+      title: title || copy.hook.onScreen || copy.points[0] || "Update berita",
+      points: copy.points,
+      narration: {
+        hook: copy.hook,
+        facts: copy.facts,
+        outro: copy.outro,
+      },
       sourceUrl,
       channel: body.channel,
       cta: body.cta,
       durationSec: body.durationSec,
       aspect: isAspect(body.aspect) ? body.aspect : "9:16",
       style: isStyle(body.style) ? body.style : "explainer",
-      tone: isTone(body.tone) ? body.tone : "netral",
+      tone,
       mainImage,
       images,
     });

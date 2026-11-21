@@ -153,8 +153,8 @@ export function MotionGraphicClient() {
         <CardHeader>
           <CardTitle>News → Motion Graphic</CardTitle>
           <CardDescription>
-            Scrape + foto + ringkas Gemini → brief untuk Claude/ElevenLabs
-            (atau Remotion lokal). Caption IG/FB ikut di panel bawah.
+            Scrape + foto + Gemini (ringkasan, caption, naskah VO + teks
+            layar) → brief Claude/ElevenLabs atau Remotion lokal.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -409,7 +409,7 @@ export function MotionGraphicClient() {
               {summary ? (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Ringkasan Gemini
+                    Ringkasan Gemini (poin berita)
                   </p>
                   <ul className="list-disc space-y-1 pl-5 text-sm text-zinc-700">
                     {summary.points.map((point) => (
@@ -450,7 +450,7 @@ export function MotionGraphicClient() {
 
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  Naskah VO (ElevenLabs)
+                  Naskah VO Gemini → ElevenLabs
                 </p>
                 <p className="whitespace-pre-wrap rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm leading-relaxed text-zinc-800">
                   {brief.voText}

@@ -98,9 +98,17 @@ export type ClaudeMotionBrief = {
   production: MotionProductionGuide;
 };
 
+export type MotionNarrationInput = {
+  hook: { vo: string; onScreen: string };
+  facts: Array<{ vo: string; onScreen: string }>;
+  outro: { vo: string; onScreen: string };
+};
+
 export type BuildMotionBriefInput = {
   title: string;
   points: string[];
+  /** Naskah Gemini (VO + on-screen). Jika ada, dipakai utuh tanpa pemotongan lokal. */
+  narration?: MotionNarrationInput;
   sourceUrl?: string;
   channel?: string;
   cta?: string;
@@ -277,7 +285,7 @@ function buildProductionGuide(input: {
   return {
     for: "claude",
     voiceover:
-      "Pakai field voText (atau tiap beats[].vo) sebagai naskah ElevenLabs. Setelah MP3/WAV jadi, retiming wajib: sesuaikan estimatedStartSec/estimatedEndSec tiap beat ke audio final.",
+      "voText / beats[].vo sudah ditulis Gemini (kalimat lengkap). Pakai langsung di ElevenLabs. Setelah audio jadi, retiming wajib ke estimatedStartSec/estimatedEndSec.",
     images:
       imageCount > 0
         ? "Unggah foto dari images[] dan beats[].imageUrl ke Claude. Hook & fact sudah punya saran URL bila scrape berhasil."
@@ -312,22 +320,53 @@ export function buildMotionBrief(input: BuildMotionBriefInput): MotionBrief {
     normalizeSpaces(input.title || "Update berita hari ini") ||
     "Update berita hari ini";
   const imagePool = collectBriefImages(input.mainImage, input.images);
-  const facts = (input.points || [])
-    .map((p) => normalizeSpaces(p))
-    .filter(Boolean)
-    .slice(0, 3);
-  while (facts.length < 2) {
-    facts.push(facts[0] || "Detail lengkap menyusul dari sumber berita.");
-  }
+  const narration = input.narration;
 
-  const hookVo = spokenHook(title, tone);
-  const hookOnScreen = title;
-  const factLines = facts.map((fact) => ({
-    vo: spokenFact(fact),
-    onScreen: onScreenFact(fact),
-  }));
-  const outroVo = spokenOutro(cta, tone);
-  const outroOnScreen = limitWords(cta, 12);
+  let hookVo: string;
+  let hookOnScreen: string;
+  let factLines: Array<{ vo: string; onScreen: string }>;
+  let outroVo: string;
+  let outroOnScreen: string;
+
+  if (narration?.hook?.vo && narration.facts?.length) {
+    hookVo = ensureSpokenSentence(narration.hook.vo);
+    hookOnScreen = title;
+    factLines = narration.facts
+      .map((line) => ({
+        vo: ensureSpokenSentence(line.vo),
+        onScreen: normalizeSpaces(line.onScreen),
+      }))
+      .filter((line) => line.vo && line.onScreen)
+      .slice(0, 3);
+    while (factLines.length < 2) {
+      const fallbackPoint =
+        (input.points || []).map(normalizeSpaces).filter(Boolean)[0] ||
+        "Detail lengkap menyusul dari sumber berita.";
+      factLines.push({
+        vo: spokenFact(fallbackPoint),
+        onScreen: onScreenFact(fallbackPoint),
+      });
+    }
+    outroVo = ensureSpokenSentence(narration.outro?.vo || spokenOutro(cta, tone));
+    outroOnScreen =
+      normalizeSpaces(narration.outro?.onScreen || "") || limitWords(cta, 12);
+  } else {
+    const facts = (input.points || [])
+      .map((p) => normalizeSpaces(p))
+      .filter(Boolean)
+      .slice(0, 3);
+    while (facts.length < 2) {
+      facts.push(facts[0] || "Detail lengkap menyusul dari sumber berita.");
+    }
+    hookVo = spokenHook(title, tone);
+    hookOnScreen = title;
+    factLines = facts.map((fact) => ({
+      vo: spokenFact(fact),
+      onScreen: onScreenFact(fact),
+    }));
+    outroVo = spokenOutro(cta, tone);
+    outroOnScreen = limitWords(cta, 12);
+  }
 
   const rawBeats: Array<
     Omit<MotionBeat, "startSec" | "endSec" | "words" | "wordTimings">
@@ -410,7 +449,9 @@ export function buildMotionBrief(input: BuildMotionBriefInput): MotionBrief {
     beats,
     production,
     pipeline: {
-      tts: "edge-tts → remotion-news/public/voice.mp3 ( Remotion lokal )",
+      tts: narration
+        ? "Gemini naskah VO → ElevenLabs (Claude) atau edge-tts (Remotion lokal)"
+        : "edge-tts → remotion-news/public/voice.mp3 ( Remotion lokal )",
       render:
         "cd remotion-news && .\\render.ps1 -Brief ..\\path\\brief.json",
       karaoke: `style ${style}: ${STYLE_META[style]}`,

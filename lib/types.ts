@@ -27,6 +27,21 @@ export interface SummarizeResult {
   titleHighlights: string[];
 }
 
+/** Satu baris naskah motion: suara vs teks kartu. */
+export type MotionNarrationLine = {
+  /** Kalimat lengkap siap ElevenLabs (boleh 1–2 kalimat). */
+  vo: string;
+  /** Teks on-screen / kartu (padat, makna utuh). */
+  onScreen: string;
+};
+
+/** Output Gemini khusus News → Motion Graphic. */
+export interface MotionCopyResult extends SummarizeResult {
+  hook: MotionNarrationLine;
+  facts: MotionNarrationLine[];
+  outro: MotionNarrationLine;
+}
+
 export interface CoverSlideModel {
   kind: "cover";
   title: string;
