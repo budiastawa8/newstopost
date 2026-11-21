@@ -1,8 +1,17 @@
 import type { ParagraphCount } from "@/lib/paragraph-count";
 
-export type MotionStyle = "explainer" | "ticker" | "minimal";
+export type MotionStyle = "explainer" | "ticker" | "minimal" | "teal-gold";
 export type MotionTone = "netral" | "santai" | "tegas";
 export type MotionAspect = "9:16" | "1:1" | "16:9" | "4:5";
+
+export type MotionStylePalette = {
+  bgA: string;
+  bgB: string;
+  accent: string;
+  card: string;
+  ink: string;
+  muted: string;
+};
 
 /** Opsi durasi di UI Motion Graphic. */
 export const MOTION_DURATION_OPTIONS = [15, 30, 45, 60, 90] as const;
@@ -128,6 +137,10 @@ export type MotionProductionGuide = {
   onScreen: string;
   timing: string;
   output: string;
+  /** Deskripsi visual singkat untuk Claude. */
+  look: string;
+  /** Hex / rgba palette yang harus diikuti. */
+  palette: MotionStylePalette;
   /** Siap ditempel ke Claude bersama file brief. */
   promptHint: string;
 };
@@ -217,7 +230,63 @@ const STYLE_META: Record<MotionStyle, string> = {
   explainer: "clean lower-thirds, icon beats, soft kinetic type",
   ticker: "bold headline cards, urgency ticker, hard cuts",
   minimal: "sparse typography, soft transitions, calm editorial",
+  "teal-gold":
+    "deep teal backgrounds, antique gold accents, editorial news cards",
 };
+
+export function paletteForMotionStyle(style: MotionStyle): MotionStylePalette {
+  if (style === "ticker") {
+    return {
+      bgA: "#111827",
+      bgB: "#7f1d1d",
+      accent: "#fbbf24",
+      card: "rgba(17, 24, 39, 0.88)",
+      ink: "#f8fafc",
+      muted: "#fecaca",
+    };
+  }
+  if (style === "minimal") {
+    return {
+      bgA: "#f8fafc",
+      bgB: "#e2e8f0",
+      accent: "#0f766e",
+      card: "rgba(255, 255, 255, 0.92)",
+      ink: "#0f172a",
+      muted: "#475569",
+    };
+  }
+  if (style === "teal-gold") {
+    return {
+      bgA: "#0f3d3e",
+      bgB: "#134e4a",
+      accent: "#d97706",
+      card: "rgba(15, 61, 62, 0.9)",
+      ink: "#fffbeb",
+      muted: "#99f6e4",
+    };
+  }
+  return {
+    bgA: "#0b1220",
+    bgB: "#123a5f",
+    accent: "#38bdf8",
+    card: "rgba(15, 23, 42, 0.82)",
+    ink: "#f8fafc",
+    muted: "#cbd5e1",
+  };
+}
+
+function lookForMotionStyle(style: MotionStyle): string {
+  if (style === "ticker") {
+    return "Bold ticker: latar gelap merah, aksen kuning terang, kesan breaking news.";
+  }
+  if (style === "minimal") {
+    return "Clean minimal: latar terang netral, aksen toska, tipografi tenang.";
+  }
+  if (style === "teal-gold") {
+    return "Toska + emas: background toska tua, aksen kuning tua/emas antik, kartu gelap editorial.";
+  }
+  return "News explainer: latar biru gelap, aksen cyan, lower-third bersih.";
+}
 
 function normalizeSpaces(text: string): string {
   return text.replace(/\s+/g, " ").trim();
@@ -375,6 +444,8 @@ function buildProductionGuide(input: {
   imageCount: number;
 }): MotionProductionGuide {
   const { channel, aspect, style, width, height, imageCount } = input;
+  const palette = paletteForMotionStyle(style);
+  const look = lookForMotionStyle(style);
   return {
     for: "claude",
     voiceover:
@@ -388,13 +459,16 @@ function buildProductionGuide(input: {
     timing:
       "Semua angka detik di brief adalah perkiraan app, bukan timing final karaoke/subtitle.",
     output: `MP4 ${aspect} (${width}×${height}), style ${style}, channel "${channel}".`,
+    look,
+    palette,
     promptHint: [
       "Buat motion graphic berita dari brief JSON ini.",
       "1) Generate voiceover ElevenLabs dari voText (panjang naskah sudah disesuaikan target durasi).",
       "2) Pakai / minta foto dari images dan imageUrl per beat.",
       "3) Sesuaikan durasi tiap beat ke audio final (abaikan estimasi detik jika tidak cocok).",
       "4) Teks on-screen dari onScreen; branding channel; CTA di outro.",
-      `5) Export MP4 ${aspect} ${width}x${height}.`,
+      `5) Ikuti look/palette: ${look} bgA ${palette.bgA}, bgB ${palette.bgB}, accent ${palette.accent}, ink ${palette.ink}.`,
+      `6) Export MP4 ${aspect} ${width}x${height}.`,
     ].join(" "),
   };
 }

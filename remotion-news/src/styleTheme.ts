@@ -34,6 +34,18 @@ export function themeForStyle(style: string): StyleTheme {
       karaokeActive: "#0f766e",
     };
   }
+  if (style === "teal-gold") {
+    return {
+      bgA: "#0f3d3e",
+      bgB: "#134e4a",
+      accent: "#d97706",
+      card: "rgba(15, 61, 62, 0.9)",
+      ink: "#fffbeb",
+      muted: "#99f6e4",
+      karaokeBase: "rgba(255, 251, 235, 0.45)",
+      karaokeActive: "#d97706",
+    };
+  }
   return {
     bgA: "#0b1220",
     bgB: "#123a5f",

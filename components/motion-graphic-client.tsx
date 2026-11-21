@@ -253,6 +253,7 @@ export function MotionGraphicClient() {
                 <option value="explainer">News explainer</option>
                 <option value="ticker">Bold ticker</option>
                 <option value="minimal">Clean minimal</option>
+                <option value="teal-gold">Toska + emas</option>
               </select>
             </div>
             <div className="space-y-2">

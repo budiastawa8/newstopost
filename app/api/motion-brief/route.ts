@@ -32,7 +32,12 @@ function isAspect(value: unknown): value is MotionAspect {
 }
 
 function isStyle(value: unknown): value is MotionStyle {
-  return value === "explainer" || value === "ticker" || value === "minimal";
+  return (
+    value === "explainer" ||
+    value === "ticker" ||
+    value === "minimal" ||
+    value === "teal-gold"
+  );
 }
 
 function isTone(value: unknown): value is MotionTone {
