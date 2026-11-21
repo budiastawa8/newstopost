@@ -14,7 +14,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  claudeMotionBriefFileName,
   motionBriefFileName,
+  toClaudeMotionBrief,
   type MotionAspect,
   type MotionBrief,
   type MotionStyle,
@@ -38,18 +40,26 @@ async function readError(response: Response): Promise<string> {
   return `HTTP ${response.status}`;
 }
 
-function downloadJson(brief: MotionBrief) {
-  const blob = new Blob([`${JSON.stringify(brief, null, 2)}\n`], {
+function downloadJsonFile(fileName: string, payload: unknown) {
+  const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], {
     type: "application/json;charset=utf-8",
   });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = motionBriefFileName(brief);
+  a.download = fileName;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+function downloadRemotionBrief(brief: MotionBrief) {
+  downloadJsonFile(motionBriefFileName(brief), brief);
+}
+
+function downloadClaudeBrief(brief: MotionBrief) {
+  downloadJsonFile(claudeMotionBriefFileName(brief), toClaudeMotionBrief(brief));
 }
 
 export function MotionGraphicClient() {
@@ -66,6 +76,7 @@ export function MotionGraphicClient() {
   const [brief, setBrief] = useState<MotionBrief | null>(null);
   const [summary, setSummary] = useState<SummarizeResult | null>(null);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const loading = phase === "scrape" || phase === "summarize" || phase === "compose";
 
@@ -75,6 +86,16 @@ export function MotionGraphicClient() {
     }
     return `.\\remotion-news\\render.ps1 -Brief .\\Downloads\\${motionBriefFileName(brief)}`;
   }, [brief]);
+
+  async function copyText(key: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      window.setTimeout(() => setCopiedKey(null), 1800);
+    } catch {
+      setCopiedKey(null);
+    }
+  }
 
   async function handleGenerate() {
     setError(null);
@@ -132,9 +153,8 @@ export function MotionGraphicClient() {
         <CardHeader>
           <CardTitle>News → Motion Graphic</CardTitle>
           <CardDescription>
-            Scrape + foto berita + ringkas Gemini → brief VO/karaoke + caption
-            IG/FB → render Remotion lokal (tanpa CapCut). Foto ikut otomatis
-            saat render.
+            Scrape + foto + ringkas Gemini → brief untuk Claude/ElevenLabs
+            (atau Remotion lokal). Caption IG/FB ikut di panel bawah.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -287,7 +307,8 @@ export function MotionGraphicClient() {
         <CardHeader>
           <CardTitle>Output</CardTitle>
           <CardDescription>
-            Unduh brief.json lalu render di folder <code>remotion-news</code>.
+            Untuk Claude + ElevenLabs: unduh brief Claude. Remotion lokal
+            opsional lewat brief penuh + perintah render.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -299,18 +320,51 @@ export function MotionGraphicClient() {
           ) : (
             <>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" onClick={() => downloadJson(brief)}>
-                  Unduh brief.json
+                <Button type="button" onClick={() => downloadClaudeBrief(brief)}>
+                  Unduh brief untuk Claude
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    copyText(
+                      "prompt",
+                      `${brief.production.promptHint}\n\n---\nUnggah juga file brief Claude + audio ElevenLabs dari voText + foto dari images/imageUrl.`
+                    )
+                  }
+                >
+                  {copiedKey === "prompt"
+                    ? "Instruksi tersalin!"
+                    : "Salin instruksi Claude"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => copyText("vo", brief.voText)}
+                >
+                  {copiedKey === "vo" ? "VO tersalin!" : "Salin naskah VO"}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(renderCommand);
-                  }}
+                  onClick={() => downloadRemotionBrief(brief)}
                 >
-                  Salin perintah render
+                  Unduh brief Remotion
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => copyText("render", renderCommand)}
+                >
+                  {copiedKey === "render"
+                    ? "Perintah tersalin!"
+                    : "Salin perintah render"}
+                </Button>
+              </div>
+
+              <div className="rounded-md border border-teal-200 bg-teal-50/80 px-3 py-2 text-xs leading-relaxed text-teal-950">
+                <p className="font-semibold text-teal-900">Alur Claude</p>
+                <p className="mt-1">{brief.production.promptHint}</p>
               </div>
 
               <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-700">
@@ -367,7 +421,7 @@ export function MotionGraphicClient() {
 
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  Beats + karaoke
+                  Beats · VO + on-screen
                 </p>
                 {brief.beats.map((beat) => (
                   <div
@@ -378,9 +432,17 @@ export function MotionGraphicClient() {
                       [{beat.startSec}–{beat.endSec}s] {beat.id}
                       {beat.imageUrl ? " · foto" : ""}
                     </p>
-                    <p className="mt-1 text-sm text-zinc-800">{beat.vo}</p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {beat.words.join(" · ")}
+                    <p className="mt-1 text-sm text-zinc-800">
+                      <span className="text-xs font-semibold text-zinc-500">
+                        VO:{" "}
+                      </span>
+                      {beat.vo}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-700">
+                      <span className="text-xs font-semibold text-zinc-500">
+                        Layar:{" "}
+                      </span>
+                      {beat.onScreen || beat.caption}
                     </p>
                   </div>
                 ))}
@@ -388,9 +450,9 @@ export function MotionGraphicClient() {
 
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  VO full (TTS)
+                  Naskah VO (ElevenLabs)
                 </p>
-                <p className="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm leading-relaxed text-zinc-800">
+                <p className="whitespace-pre-wrap rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm leading-relaxed text-zinc-800">
                   {brief.voText}
                 </p>
               </div>

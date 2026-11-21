@@ -36,8 +36,8 @@ Buka [http://localhost:3000](http://localhost:3000).
 
 1. Pilih tab **News → Motion Graphic**
 2. Tempel URL (atau teks berita) → **Generate Motion Brief**
-3. **Unduh brief.json**
-4. Render di PC:
+3. **Unduh brief untuk Claude** (disarankan) → unggah ke Claude + naskah `voText` di ElevenLabs + foto dari `images` / `imageUrl`
+4. Opsional Remotion lokal: **Unduh brief Remotion** lalu:
 
 ```powershell
 cd G:\BUDIAST\newstopost\remotion-news
@@ -46,11 +46,9 @@ py -3 -m pip install edge-tts
 .\render.ps1 -Brief C:\Users\BUDIAST\Downloads\news-brief-....json
 ```
 
-Hasil: `remotion-news\out\news-motion.mp4`
+Hasil Remotion: `remotion-news\out\news-motion.mp4`
 
-Foto berita (og:image + gambar artikel) ikut di `brief.json` dan diunduh otomatis saat render ke `remotion-news\public\media\`.
-
-Catatan: render video **tidak** jalan di Vercel — hanya generate brief. MP4 dibuat lokal.
+Brief Claude berisi `voText`, `onScreen` per beat, URL foto, dan `production.promptHint` (tanpa `wordTimings` Remotion). Render video **tidak** jalan di Vercel — hanya generate brief.
 
 ## PWA
 

@@ -10,6 +10,8 @@ export type NewsBeat = {
   startSec: number;
   endSec: number;
   vo: string;
+  /** On-screen / card text (preferred). */
+  onScreen?: string;
   caption: string;
   words: string[];
   wordTimings: WordTiming[];

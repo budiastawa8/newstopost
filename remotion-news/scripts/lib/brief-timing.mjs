@@ -112,16 +112,21 @@ export function applyWordTimingsToBeats(brief, wordTimings) {
       }));
     }
     const spoken = slice.map((w) => w.word).join(" ");
+    const keepOnScreen =
+      Boolean(beat.onScreen) ||
+      beat.role === "hook" ||
+      (typeof beat.caption === "string" && beat.caption.trim().length > 0);
+    const onScreen = keepOnScreen
+      ? beat.onScreen || beat.caption
+      : spoken || beat.caption;
     return {
       ...beat,
       startSec,
       endSec: index === arr.length - 1 ? next.durationSec : endSec,
       words: slice.map((w) => w.word),
       wordTimings: slice,
-      caption:
-        beat.role === "hook" && beat.caption
-          ? beat.caption
-          : spoken || beat.caption,
+      onScreen,
+      caption: onScreen || spoken || beat.caption,
     };
   });
   return next;

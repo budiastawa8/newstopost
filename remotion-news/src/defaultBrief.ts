@@ -21,7 +21,8 @@ export const DEFAULT_BRIEF: NewsBrief = {
       role: "hook",
       startSec: 0,
       endSec: 3,
-      vo: "Sorotan: Update berita hari ini",
+      vo: "Update berita hari ini.",
+      onScreen: "Update berita hari ini",
       caption: "Update berita hari ini",
       words: ["Update", "berita", "hari", "ini"],
       wordTimings: [

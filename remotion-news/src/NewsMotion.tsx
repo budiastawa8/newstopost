@@ -262,7 +262,7 @@ export const NewsMotion: React.FC<NewsMotionProps> = ({ brief, audioSrc }) => {
         return (
           <Sequence key={beat.id} from={from} durationInFrames={durationInFrames}>
             <BeatCard
-              title={beat.caption}
+              title={beat.onScreen || beat.caption}
               subtitle={beat.visual || beat.id}
               channel={brief.channel}
               theme={theme}
