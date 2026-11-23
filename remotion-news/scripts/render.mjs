@@ -3,7 +3,10 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { alignBriefWithSubtitles, scaleBriefToDuration } from "./lib/brief-timing.mjs";
-import { attachLocalImages } from "./lib/download-images.mjs";
+import {
+  attachLocalImages,
+  attachLocalLogo,
+} from "./lib/download-images.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -89,6 +92,12 @@ if (audioSrc) {
     );
   } else {
     console.log("Foto berita → tidak ada imageUrl di brief (teks-only)");
+  }
+
+  const logoResult = attachLocalLogo(brief, publicDir);
+  brief = logoResult.brief;
+  if (!logoResult.ok && !brief.logoSrc) {
+    console.log("Logo brand → tidak ada (outro CTA teks saja)");
   }
 }
 

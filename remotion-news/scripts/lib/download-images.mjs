@@ -121,3 +121,59 @@ export async function attachLocalImages(brief, publicDir) {
   next.beats = beats;
   return { brief: next, ok, fail };
 }
+
+function extFromDataUrlMime(mime) {
+  const ct = String(mime || "").toLowerCase();
+  if (ct.includes("png")) return ".png";
+  if (ct.includes("webp")) return ".webp";
+  if (ct.includes("gif")) return ".gif";
+  if (ct.includes("svg")) return ".svg";
+  if (ct.includes("jpeg") || ct.includes("jpg")) return ".jpg";
+  return ".png";
+}
+
+/**
+ * Tulis brief.logoDataUrl ke public/media/logo.* dan set brief.logoSrc.
+ * Dipakai Remotion Img di beat outro.
+ */
+export function attachLocalLogo(brief, publicDir) {
+  const next = structuredClone(brief);
+  const dataUrl =
+    typeof next.logoDataUrl === "string" ? next.logoDataUrl.trim() : "";
+  if (!dataUrl.startsWith("data:image/")) {
+    next.logoSrc = next.logoSrc || null;
+    return { brief: next, ok: false };
+  }
+
+  const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/s);
+  if (!match) {
+    next.logoSrc = null;
+    return { brief: next, ok: false };
+  }
+
+  const mediaDir = path.join(publicDir, "media");
+  fs.mkdirSync(mediaDir, { recursive: true });
+
+  for (const existing of fs.readdirSync(mediaDir)) {
+    if (existing.startsWith("logo.")) {
+      fs.unlinkSync(path.join(mediaDir, existing));
+    }
+  }
+
+  const ext = extFromDataUrlMime(match[1]);
+  const destName = `logo${ext}`;
+  const destPath = path.join(mediaDir, destName);
+  try {
+    fs.writeFileSync(destPath, Buffer.from(match[2], "base64"));
+    next.logoSrc = `media/${destName}`;
+    // Hapus data URL dari props agar file props.json tidak membengkak
+    next.logoDataUrl = null;
+    console.log(`Logo OK  → ${next.logoSrc}`);
+    return { brief: next, ok: true };
+  } catch (err) {
+    next.logoSrc = null;
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`Logo skip: ${msg}`);
+    return { brief: next, ok: false };
+  }
+}

@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CaptionPanel } from "@/components/caption-panel";
 import { GenerateProgress } from "@/components/generate-progress";
+import { LogoUploader } from "@/components/logo-uploader";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,11 +14,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { loadStoredLogo } from "@/lib/logo-storage";
 import {
   MOTION_DURATION_OPTIONS,
   claudeMotionBriefFileName,
   motionBriefFileName,
   toClaudeMotionBrief,
+  withMotionLogo,
   type MotionAspect,
   type MotionBrief,
   type MotionStyle,
@@ -79,8 +82,13 @@ export function MotionGraphicClient() {
   const [summary, setSummary] = useState<SummarizeResult | null>(null);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [logoSrc, setLogoSrc] = useState<string | null>(null);
 
   const loading = phase === "scrape" || phase === "summarize" || phase === "compose";
+
+  useEffect(() => {
+    setLogoSrc(loadStoredLogo());
+  }, []);
 
   const renderCommand = useMemo(() => {
     if (!brief) {
@@ -139,7 +147,7 @@ export function MotionGraphicClient() {
         summary: SummarizeResult;
         sourceUrl?: string;
       };
-      setBrief(data.brief);
+      setBrief(withMotionLogo(data.brief, logoSrc));
       setSummary(data.summary);
       setSourceUrl(data.sourceUrl || data.brief.sourceUrl || trimmedUrl || null);
       setPhase("ready");
@@ -307,6 +315,18 @@ export function MotionGraphicClient() {
             </div>
           </div>
 
+          <LogoUploader
+            logoSrc={logoSrc}
+            inputId="motion-brand-logo"
+            disabled={loading}
+            hint="Tampil di beat outro bersama CTA · PNG/JPG/WEBP/SVG · maks 2 MB"
+            onLogoChange={(next) => {
+              setLogoSrc(next);
+              setBrief((prev) => (prev ? withMotionLogo(prev, next) : prev));
+            }}
+            onError={setError}
+          />
+
           <Button
             type="button"
             className="w-full"
@@ -352,7 +372,15 @@ export function MotionGraphicClient() {
                   onClick={() =>
                     copyText(
                       "prompt",
-                      `${brief.production.promptHint}\n\n---\nUnggah juga file brief Claude + audio ElevenLabs dari voText + foto dari images/imageUrl.`
+                      [
+                        brief.production.promptHint,
+                        "",
+                        "---",
+                        "Unggah juga file brief Claude + audio ElevenLabs dari voText + foto dari images/imageUrl.",
+                        brief.logoDataUrl
+                          ? "Logo brand sudah ada di logoDataUrl — tampilkan hanya di outro bersama CTA."
+                          : "Opsional: unggah file logo brand terpisah untuk kartu outro + CTA.",
+                      ].join("\n")
                     )
                   }
                 >

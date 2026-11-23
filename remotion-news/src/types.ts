@@ -36,6 +36,10 @@ export type NewsBrief = {
   height: number;
   voText: string;
   images?: string[];
+  /** Data URL dari NewsToPost (di-materialize ke logoSrc saat render). */
+  logoDataUrl?: string | null;
+  /** Path lokal di public/ (mis. media/logo.png). */
+  logoSrc?: string | null;
   beats: NewsBeat[];
   sourceUrl?: string;
   audioFileName?: string;

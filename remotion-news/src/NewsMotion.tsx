@@ -87,12 +87,14 @@ const BeatCard: React.FC<{
   theme: ReturnType<typeof themeForStyle>;
   role?: string;
   imageSrc?: string | null;
-}> = ({ title, subtitle, channel, theme, role, imageSrc }) => {
+  logoSrc?: string | null;
+}> = ({ title, subtitle, channel, theme, role, imageSrc, logoSrc }) => {
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const enter = spring({ frame, fps, config: { damping: 16, stiffness: 120 } });
   const drift = Math.sin(frame / 28) * 8;
   const photo = resolveImageSrc(imageSrc);
+  const logo = role === "outro" ? resolveImageSrc(logoSrc) : null;
   const headline = fitHeadline({
     title,
     role,
@@ -209,8 +211,23 @@ const BeatCard: React.FC<{
             padding: "36px 34px",
             boxShadow: "0 24px 60px rgba(0,0,0,0.25)",
             backdropFilter: "blur(8px)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: role === "outro" ? "center" : "stretch",
+            textAlign: role === "outro" ? "center" : "left",
           }}
         >
+          {logo ? (
+            <Img
+              src={logo}
+              style={{
+                maxWidth: Math.min(280, width * 0.42),
+                maxHeight: 120,
+                objectFit: "contain",
+                marginBottom: 22,
+              }}
+            />
+          ) : null}
           <div
             style={{
               color: theme.accent,
@@ -268,6 +285,7 @@ export const NewsMotion: React.FC<NewsMotionProps> = ({ brief, audioSrc }) => {
               theme={theme}
               role={beat.role}
               imageSrc={beat.imageSrc}
+              logoSrc={brief.logoSrc}
             />
             <KaraokeCaption beat={beat} theme={theme} />
           </Sequence>

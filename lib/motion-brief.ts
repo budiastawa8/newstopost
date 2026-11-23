@@ -163,6 +163,13 @@ export type MotionBrief = {
   voText: string;
   /** Unique article image URLs used across beats. */
   images: string[];
+  /**
+   * Logo brand (data URL) — tampil di beat outro bersama CTA.
+   * Remotion render menulis ini ke public/media lalu mengisi logoSrc.
+   */
+  logoDataUrl?: string | null;
+  /** Path lokal Remotion (mis. media/logo.png) setelah materialize. */
+  logoSrc?: string | null;
   beats: MotionBeat[];
   production: MotionProductionGuide;
   pipeline: {
@@ -191,6 +198,10 @@ export type ClaudeMotionBrief = {
   height: number;
   voText: string;
   images: string[];
+  /** true jika logo brand disertakan untuk outro. */
+  hasLogo: boolean;
+  /** Data URL logo (jika diunggah di app) — pakai di kartu outro. */
+  logoDataUrl?: string | null;
   beats: Array<{
     id: string;
     role: MotionBeat["role"];
@@ -224,6 +235,8 @@ export type BuildMotionBriefInput = {
   tone?: MotionTone;
   mainImage?: string | null;
   images?: string[];
+  /** Data URL logo brand untuk outro + CTA. */
+  logoDataUrl?: string | null;
 };
 
 const STYLE_META: Record<MotionStyle, string> = {
@@ -442,10 +455,14 @@ function buildProductionGuide(input: {
   width: number;
   height: number;
   imageCount: number;
+  hasLogo: boolean;
 }): MotionProductionGuide {
-  const { channel, aspect, style, width, height, imageCount } = input;
+  const { channel, aspect, style, width, height, imageCount, hasLogo } = input;
   const palette = paletteForMotionStyle(style);
   const look = lookForMotionStyle(style);
+  const logoStep = hasLogo
+    ? "4) Di beat outro saja: tampilkan logo brand (logoDataUrl / file logo yang diunggah) di atas atau bersama teks CTA onScreen. Jangan taruh logo di hook/facts."
+    : "4) Teks on-screen dari onScreen; branding channel; CTA di outro. Jika user unggah logo terpisah, pakai hanya di outro bersama CTA.";
   return {
     for: "claude",
     voiceover:
@@ -466,10 +483,48 @@ function buildProductionGuide(input: {
       "1) Generate voiceover ElevenLabs dari voText (panjang naskah sudah disesuaikan target durasi).",
       "2) Pakai / minta foto dari images dan imageUrl per beat.",
       "3) Sesuaikan durasi tiap beat ke audio final (abaikan estimasi detik jika tidak cocok).",
-      "4) Teks on-screen dari onScreen; branding channel; CTA di outro.",
+      logoStep,
       `5) Ikuti look/palette: ${look} bgA ${palette.bgA}, bgB ${palette.bgB}, accent ${palette.accent}, ink ${palette.ink}.`,
       `6) Export MP4 ${aspect} ${width}x${height}.`,
     ].join(" "),
+  };
+}
+
+/** Sematkan / perbarui logo brand pada brief (client-side setelah generate). */
+export function withMotionLogo(
+  brief: MotionBrief,
+  logoDataUrl: string | null | undefined
+): MotionBrief {
+  const clean =
+    typeof logoDataUrl === "string" && logoDataUrl.startsWith("data:image/")
+      ? logoDataUrl
+      : null;
+  const hasLogo = Boolean(clean);
+  const production = buildProductionGuide({
+    channel: brief.channel,
+    aspect: brief.aspect,
+    style: brief.style,
+    width: brief.width,
+    height: brief.height,
+    imageCount: brief.images.length,
+    hasLogo,
+  });
+  const beats = brief.beats.map((beat) =>
+    beat.role === "outro"
+      ? {
+          ...beat,
+          visual: hasLogo
+            ? "CTA card + logo brand"
+            : beat.visual || "CTA card",
+        }
+      : beat
+  );
+  return {
+    ...brief,
+    logoDataUrl: clean,
+    logoSrc: clean ? brief.logoSrc ?? null : null,
+    beats,
+    production,
   };
 }
 
@@ -588,49 +643,62 @@ export function buildMotionBrief(input: BuildMotionBriefInput): MotionBrief {
   });
 
   const voText = beats.map((b) => b.vo).join("\n\n");
-  const production = buildProductionGuide({
-    channel,
-    aspect,
-    style,
-    width: size.width,
-    height: size.height,
-    imageCount: imagePool.length,
-  });
+  const logoDataUrl =
+    typeof input.logoDataUrl === "string" &&
+    input.logoDataUrl.startsWith("data:image/")
+      ? input.logoDataUrl
+      : null;
 
-  return {
-    version: 2,
-    generatedAt: new Date().toISOString(),
-    sourceUrl: input.sourceUrl || "",
-    channel,
-    cta,
-    title,
-    durationSec,
-    aspect,
-    style,
-    tone,
-    fps: 30,
-    width: size.width,
-    height: size.height,
-    voText,
-    images: imagePool,
-    beats,
-    production,
-    pipeline: {
-      tts: narration
-        ? "Gemini naskah VO → ElevenLabs (Claude) atau edge-tts (Remotion lokal)"
-        : "edge-tts → remotion-news/public/voice.mp3 ( Remotion lokal )",
-      render:
-        "cd remotion-news && .\\render.ps1 -Brief ..\\path\\brief.json",
-      karaoke: `style ${style}: ${STYLE_META[style]}`,
-      images:
-        "render.mjs downloads beat imageUrl → public/media/* then Remotion Img",
-      noCapCut: true,
+  return withMotionLogo(
+    {
+      version: 2,
+      generatedAt: new Date().toISOString(),
+      sourceUrl: input.sourceUrl || "",
+      channel,
+      cta,
+      title,
+      durationSec,
+      aspect,
+      style,
+      tone,
+      fps: 30,
+      width: size.width,
+      height: size.height,
+      voText,
+      images: imagePool,
+      beats,
+      production: buildProductionGuide({
+        channel,
+        aspect,
+        style,
+        width: size.width,
+        height: size.height,
+        imageCount: imagePool.length,
+        hasLogo: false,
+      }),
+      pipeline: {
+        tts: narration
+          ? "Gemini naskah VO → ElevenLabs (Claude) atau edge-tts (Remotion lokal)"
+          : "edge-tts → remotion-news/public/voice.mp3 ( Remotion lokal )",
+        render:
+          "cd remotion-news && .\\render.ps1 -Brief ..\\path\\brief.json",
+        karaoke: `style ${style}: ${STYLE_META[style]}`,
+        images:
+          "render.mjs downloads beat imageUrl → public/media/* then Remotion Img; logoDataUrl → media/logo.*",
+        noCapCut: true,
+      },
     },
-  };
+    logoDataUrl
+  );
 }
 
 /** Versi ringkas untuk unggah ke Claude + ElevenLabs. */
 export function toClaudeMotionBrief(brief: MotionBrief): ClaudeMotionBrief {
+  const logoDataUrl =
+    typeof brief.logoDataUrl === "string" &&
+    brief.logoDataUrl.startsWith("data:image/")
+      ? brief.logoDataUrl
+      : null;
   return {
     version: brief.version,
     generatedAt: brief.generatedAt,
@@ -646,6 +714,8 @@ export function toClaudeMotionBrief(brief: MotionBrief): ClaudeMotionBrief {
     height: brief.height,
     voText: brief.voText,
     images: brief.images,
+    hasLogo: Boolean(logoDataUrl),
+    logoDataUrl,
     beats: brief.beats.map((beat) => ({
       id: beat.id,
       role: beat.role,

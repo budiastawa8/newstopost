@@ -14,6 +14,9 @@ import {
 export interface LogoUploaderProps {
   logoSrc: string | null;
   disabled?: boolean;
+  /** Id input file (hindari duplikat jika ada 2 uploader di halaman berbeda). */
+  inputId?: string;
+  hint?: string;
   onLogoChange: (dataUrl: string | null) => void;
   onError: (message: string | null) => void;
 }
@@ -21,6 +24,8 @@ export interface LogoUploaderProps {
 export function LogoUploader({
   logoSrc,
   disabled,
+  inputId = "brand-logo",
+  hint,
   onLogoChange,
   onError,
 }: LogoUploaderProps) {
@@ -59,7 +64,7 @@ export function LogoUploader({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="brand-logo">Logo brand</Label>
+      <Label htmlFor={inputId}>Logo brand</Label>
       <div className="flex items-center gap-3 rounded-md border border-zinc-200 bg-zinc-50 p-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white ring-1 ring-zinc-200">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -73,13 +78,15 @@ export function LogoUploader({
           <p className="truncate text-sm text-zinc-700">
             {hasCustom ? "Logo kustom tersimpan di browser ini" : "Belum ada logo kustom"}
           </p>
-          <p className="text-xs text-zinc-500">PNG, JPG, WEBP, SVG · maks 2 MB</p>
+          <p className="text-xs text-zinc-500">
+            {hint || "PNG, JPG, WEBP, SVG · maks 2 MB"}
+          </p>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
         <input
           ref={inputRef}
-          id="brand-logo"
+          id={inputId}
           type="file"
           accept="image/png,image/jpeg,image/webp,image/svg+xml"
           className="sr-only"
