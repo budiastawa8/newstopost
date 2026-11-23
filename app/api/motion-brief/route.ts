@@ -65,7 +65,8 @@ export async function POST(request: Request) {
 
     if (url) {
       const scraped = await scrapeArticle(url);
-      title = scraped.title || title;
+      // Judul manual dari UI diutamakan; scrape hanya mengisi jika kosong
+      title = title || scraped.title;
       text = scraped.content || text;
       sourceUrl = scraped.sourceUrl || url;
       mainImage = scraped.mainImage;

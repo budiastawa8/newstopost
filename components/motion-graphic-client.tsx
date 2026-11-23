@@ -65,6 +65,7 @@ function downloadClaudeBrief(brief: MotionBrief) {
 
 export function MotionGraphicClient() {
   const [url, setUrl] = useState("");
+  const [title, setTitle] = useState("");
   const [pastedText, setPastedText] = useState("");
   const [channel, setChannel] = useState("NewsToPost");
   const [cta, setCta] = useState("Ikuti untuk update berikutnya");
@@ -120,6 +121,7 @@ export function MotionGraphicClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url: trimmedUrl || undefined,
+          title: title.trim() || undefined,
           text: text || undefined,
           channel,
           cta,
@@ -169,6 +171,21 @@ export function MotionGraphicClient() {
               onChange={(e) => setUrl(e.target.value)}
               disabled={loading}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="motion-title">Judul (opsional)</Label>
+            <Input
+              id="motion-title"
+              type="text"
+              placeholder='Contoh: Kisah Falun Gong'
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              disabled={loading}
+            />
+            <p className="text-xs text-zinc-500">
+              Jika diisi, judul ini dipakai di brief (menggantikan judul scrape).
+            </p>
           </div>
 
           <div className="space-y-2">
