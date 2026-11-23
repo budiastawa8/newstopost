@@ -62,9 +62,91 @@ function normalizeHashtag(tag: string): string | null {
   return withHash;
 }
 
+/** Ambil string poin dari berbagai bentuk respons Gemini. */
+function coercePointStrings(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => {
+        if (typeof item === "string") return item.replace(/\s+/g, " ").trim();
+        if (!item || typeof item !== "object") return "";
+        const record = item as {
+          text?: unknown;
+          point?: unknown;
+          summary?: unknown;
+          onScreen?: unknown;
+          vo?: unknown;
+          content?: unknown;
+        };
+        for (const key of [
+          "text",
+          "point",
+          "summary",
+          "onScreen",
+          "vo",
+          "content",
+        ] as const) {
+          const value = record[key];
+          if (typeof value === "string" && value.trim()) {
+            return value.replace(/\s+/g, " ").trim();
+          }
+        }
+        return "";
+      })
+      .filter((p) => p.length > 0);
+  }
+
+  if (typeof raw === "string" && raw.trim()) {
+    return raw
+      .split(/\n+/)
+      .map((line) => line.replace(/^[-*•\d.)\s]+/, "").trim())
+      .filter((line) => line.length > 0);
+  }
+
+  return [];
+}
+
+function fitPointsToCount(
+  points: string[],
+  count: ParagraphCount,
+  fallbacks: string[] = []
+): string[] {
+  const merged: string[] = [];
+  for (const point of [...points, ...fallbacks]) {
+    const clean = point.replace(/\s+/g, " ").trim();
+    if (!clean) continue;
+    if (merged.some((existing) => existing === clean)) continue;
+    merged.push(clean);
+    if (merged.length >= count) break;
+  }
+
+  if (merged.length === 0) {
+    throw new Error(
+      `Jumlah paragraf ringkasan harus tepat ${count}.`
+    );
+  }
+
+  // Jika kurang, pecah poin terpanjang / ulangi dengan sedikit variasi aman
+  while (merged.length < count) {
+    const source = merged[merged.length - 1];
+    const parts = source.split(/(?<=[.!?])\s+/).filter((p) => p.trim().length > 12);
+    if (parts.length >= 2 && merged.length + parts.length - 1 <= count + 2) {
+      merged.pop();
+      for (const part of parts) {
+        if (merged.length >= count) break;
+        merged.push(part.trim());
+      }
+      continue;
+    }
+    merged.push(source);
+  }
+
+  return merged.slice(0, count);
+}
+
 function validateSummarizePayload(
   value: unknown,
-  paragraphCount: ParagraphCount
+  paragraphCount: ParagraphCount,
+  fallbackPoints: string[] = []
 ): SummarizeResult {
   if (!value || typeof value !== "object") {
     throw new Error("Respons Gemini bukan objek JSON.");
@@ -76,21 +158,11 @@ function validateSummarizePayload(
     hashtags?: unknown;
   };
 
-  if (!Array.isArray(record.points)) {
-    throw new Error("Field points tidak ditemukan.");
-  }
-
-  const points = record.points
-    .filter((p): p is string => typeof p === "string")
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0)
-    .slice(0, paragraphCount);
-
-  if (points.length !== paragraphCount) {
-    throw new Error(
-      `Jumlah paragraf ringkasan harus tepat ${paragraphCount}.`
-    );
-  }
+  const points = fitPointsToCount(
+    coercePointStrings(record.points),
+    paragraphCount,
+    fallbackPoints
+  );
 
   const caption =
     typeof record.caption === "string" ? record.caption.trim() : "";
@@ -125,6 +197,19 @@ function isRetryableGeminiError(error: unknown): boolean {
   return /503|429|high demand|unavailable|resource.?exhausted|try again|overloaded|quota|timeout|aborted/i.test(
     message
   );
+}
+
+/** Respons JSON Gemini yang belum valid — boleh dicoba ulang. */
+function isValidationGeminiError(error: unknown): boolean {
+  const message =
+    error instanceof Error ? error.message : String(error ?? "");
+  return /paragraf|poin|Caption|Hashtag|Headline|JSON|Respons Gemini|hook|facts|outro|\.vo|onScreen|menggantung|Field |bukan objek/i.test(
+    message
+  );
+}
+
+function shouldRetryGeminiAttempt(error: unknown): boolean {
+  return isRetryableGeminiError(error) || isValidationGeminiError(error);
 }
 
 /**
@@ -249,7 +334,10 @@ async function generateWithModel(
       return validateSummarizePayload(parsed, paragraphCount);
     } catch (error) {
       lastError = error;
-      if (!isRetryableGeminiError(error) || attempt === MAX_ATTEMPTS_PER_MODEL) {
+      if (
+        !shouldRetryGeminiAttempt(error) ||
+        attempt === MAX_ATTEMPTS_PER_MODEL
+      ) {
         throw error;
       }
       const delay = Math.min(
@@ -293,8 +381,8 @@ export async function summarizeArticle(
       if ((error as { status?: number }).status === 504) {
         throw error;
       }
-      // Coba model berikutnya hanya jika overload/rate-limit/timeout
-      if (!isRetryableGeminiError(error)) {
+      // Coba model berikutnya untuk overload ATAU respons JSON yang belum valid
+      if (!shouldRetryGeminiAttempt(error)) {
         break;
       }
     }
@@ -346,7 +434,6 @@ function validateMotionCopyPayload(
   value: unknown,
   factCount: ParagraphCount
 ): MotionCopyResult {
-  const summary = validateSummarizePayload(value, factCount);
   if (!value || typeof value !== "object") {
     throw new Error("Respons Gemini bukan objek JSON.");
   }
@@ -359,13 +446,26 @@ function validateMotionCopyPayload(
   if (!Array.isArray(record.facts)) {
     throw new Error("Field facts tidak ditemukan.");
   }
-  const facts = record.facts
-    .slice(0, factCount)
-    .map((item, i) => cleanNarrationLine(item, `facts[${i}]`));
-  if (facts.length !== factCount) {
+
+  const rawFacts = record.facts.filter(
+    (item) => item && typeof item === "object"
+  );
+  // Jika Gemini mengirim lebih banyak fakta (mis. 6 episode), ambil yang diminta
+  if (rawFacts.length < factCount) {
     throw new Error(`Field facts harus berisi tepat ${factCount} item.`);
   }
+  const facts = rawFacts
+    .slice(0, factCount)
+    .map((item, i) => cleanNarrationLine(item, `facts[${i}]`));
   const outro = cleanNarrationLine(record.outro, "outro");
+
+  // points sering mismatch; isi dari facts.onScreen / vo bila perlu
+  const summary = validateSummarizePayload(
+    value,
+    factCount,
+    facts.map((f) => f.onScreen || f.vo)
+  );
+
   return {
     ...summary,
     hook,
@@ -464,7 +564,10 @@ async function generateMotionCopyWithModel(
       return validateMotionCopyPayload(parsed, factCount);
     } catch (error) {
       lastError = error;
-      if (!isRetryableGeminiError(error) || attempt === MAX_ATTEMPTS_PER_MODEL) {
+      if (
+        !shouldRetryGeminiAttempt(error) ||
+        attempt === MAX_ATTEMPTS_PER_MODEL
+      ) {
         throw error;
       }
       const delay = Math.min(
@@ -541,7 +644,7 @@ export async function generateMotionCopy(input: {
       if ((error as { status?: number }).status === 400) {
         throw error;
       }
-      if (!isRetryableGeminiError(error)) {
+      if (!shouldRetryGeminiAttempt(error)) {
         break;
       }
     }
@@ -667,7 +770,10 @@ async function generateFreeCopyWithModel(
       return validateFreeDesignCopyPayload(parsed);
     } catch (error) {
       lastError = error;
-      if (!isRetryableGeminiError(error) || attempt === MAX_ATTEMPTS_PER_MODEL) {
+      if (
+        !shouldRetryGeminiAttempt(error) ||
+        attempt === MAX_ATTEMPTS_PER_MODEL
+      ) {
         throw error;
       }
       const delay = Math.min(
@@ -721,7 +827,7 @@ export async function generateFreeDesignCopy(input: {
       if ((error as { status?: number }).status === 400) {
         throw error;
       }
-      if (!isRetryableGeminiError(error)) {
+      if (!shouldRetryGeminiAttempt(error)) {
         break;
       }
     }
