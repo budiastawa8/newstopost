@@ -13,8 +13,10 @@ import {
   extractImages,
   extractMainImage,
   fetchText,
+  scrapeViaJina,
   scrapeViaRss,
   scrapeViaWordPressApi,
+  type FetchTextResult,
 } from "@/lib/scrape-sources";
 import type { ScrapeResult } from "@/lib/types";
 
@@ -35,15 +37,54 @@ function isValidHttpUrl(value: string): boolean {
   }
 }
 
-function isCloudflareChallenge(html: string, status: number): boolean {
-  if (status === 403 || status === 503) return true;
-  const lower = html.toLowerCase();
-  return (
-    lower.includes("just a moment...") ||
-    lower.includes("cf-browser-verification") ||
-    lower.includes("cdn-cgi/challenge-platform") ||
-    (lower.includes("cloudflare") && lower.includes("enable javascript"))
-  );
+/**
+ * Deteksi Challenge Page sungguhan — bukan sekadar skrip JSD Cloudflare.
+ * `/cdn-cgi/challenge-platform` sering di-inject ke HTML artikel normal
+ * (JavaScript Detections), jadi TIDAK dipakai sebagai sinyal block.
+ * Sinyal andal: header `cf-mitigated: challenge` (docs Cloudflare).
+ */
+function isCloudflareChallenge(result: FetchTextResult): boolean {
+  if (result.cfMitigated?.toLowerCase() === "challenge") return true;
+
+  const lower = result.text.toLowerCase();
+  const titleMatch = lower.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = (titleMatch?.[1] || "").trim();
+  const isInterstitialTitle =
+    title.includes("just a moment") ||
+    title.includes("attention required") ||
+    title.includes("um momentinho") ||
+    title === "cloudflare";
+
+  // Interstitial challenge: judul challenge + body relatif pendek
+  if (isInterstitialTitle && result.text.length < 80_000) return true;
+
+  if (
+    lower.includes("cf-browser-verification") &&
+    result.text.length < 80_000
+  ) {
+    return true;
+  }
+
+  // 403/503 saja belum tentu CF; gabungkan dengan sinyal interstitial
+  if (
+    (result.status === 403 || result.status === 503) &&
+    (isInterstitialTitle ||
+      lower.includes("enable javascript and cookies") ||
+      lower.includes("checking your browser"))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+async function scrapeViaFallbacks(
+  url: string,
+  htmlHint?: string
+): Promise<ScrapeResult | null> {
+  const again = await scrapeViaFastSources(url, htmlHint).catch(() => null);
+  if (again) return again;
+  return scrapeViaJina(url).catch(() => null);
 }
 
 function parseWithReadability(html: string, url: string): ScrapeResult {
@@ -117,7 +158,7 @@ async function scrapeArticleFresh(url: string): Promise<ScrapeResult> {
     Referer: "https://www.google.com/",
   };
 
-  let htmlResult: { status: number; text: string; contentType: string | null };
+  let htmlResult: FetchTextResult;
 
   try {
     htmlResult = await fetchText(url, htmlHeaders);
@@ -131,33 +172,36 @@ async function scrapeArticleFresh(url: string): Promise<ScrapeResult> {
     throw statusError("Gagal mengambil halaman berita.", 502);
   }
 
-  const blocked = isCloudflareChallenge(htmlResult.text, htmlResult.status);
+  const blocked = isCloudflareChallenge(htmlResult);
+  const httpOk =
+    Boolean(htmlResult.status) &&
+    htmlResult.status >= 200 &&
+    htmlResult.status < 400;
 
-  if (!htmlResult.status || htmlResult.status >= 400 || blocked) {
-    const again = await scrapeViaFastSources(url, htmlResult.text).catch(
-      () => null
-    );
-    if (again) return again;
-
-    throw statusError(
-      `Gagal mengambil halaman (HTTP ${htmlResult.status || "error"}). Situs mungkin dilindungi bot (Cloudflare).`,
-      502
-    );
-  }
-
-  try {
-    return parseWithReadability(htmlResult.text, url);
-  } catch (error) {
-    if ((error as { status?: number }).status) {
-      throw error;
+  // HTTP OK + bukan challenge → parse dulu (hindari false positive JSD)
+  if (httpOk && !blocked) {
+    try {
+      return parseWithReadability(htmlResult.text, url);
+    } catch (error) {
+      const fallback = await scrapeViaFallbacks(url, htmlResult.text);
+      if (fallback) return fallback;
+      if ((error as { status?: number }).status) throw error;
+      throw statusError(
+        error instanceof Error
+          ? error.message
+          : "Gagal mem-parse halaman berita.",
+        500
+      );
     }
-    throw statusError(
-      error instanceof Error
-        ? error.message
-        : "Gagal mem-parse halaman berita.",
-      500
-    );
   }
+
+  const again = await scrapeViaFallbacks(url, htmlResult.text);
+  if (again) return again;
+
+  throw statusError(
+    `Gagal mengambil halaman (HTTP ${htmlResult.status || "error"}). Situs mungkin dilindungi bot (Cloudflare). Coba tempel teks berita manual, atau URL WordPress.`,
+    502
+  );
 }
 
 async function scrapeWithNextCache(url: string): Promise<ScrapeResult> {

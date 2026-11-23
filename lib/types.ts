@@ -3,7 +3,7 @@ import type { ParagraphCount } from "@/lib/paragraph-count";
 export type AspectRatio = "1080x1350" | "1080x1080" | "1080x1920";
 export type { ParagraphCount };
 
-export type ScrapeSource = "wordpress" | "rss" | "html";
+export type ScrapeSource = "wordpress" | "rss" | "html" | "jina";
 
 export interface ScrapeResult {
   title: string;

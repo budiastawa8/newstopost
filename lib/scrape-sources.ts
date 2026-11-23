@@ -115,11 +115,19 @@ export function extractMainImage(html: string, baseUrl: string): string | null {
   return null;
 }
 
+export type FetchTextResult = {
+  status: number;
+  text: string;
+  contentType: string | null;
+  /** Header resmi Cloudflare Challenge Page (`challenge` = interstitial). */
+  cfMitigated: string | null;
+};
+
 export async function fetchText(
   url: string,
   headers: Record<string, string>,
   timeoutMs = HTML_TIMEOUT_MS
-): Promise<{ status: number; text: string; contentType: string | null }> {
+): Promise<FetchTextResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -134,6 +142,7 @@ export async function fetchText(
       status: response.status,
       text,
       contentType: response.headers.get("content-type"),
+      cfMitigated: response.headers.get("cf-mitigated"),
     };
   } finally {
     clearTimeout(timeout);
@@ -387,6 +396,76 @@ function discoverFeedUrlsFromHtml(html: string, origin: string): string[] {
     }
   });
   return feeds;
+}
+
+/**
+ * Fallback saat HTML di-challenge Cloudflare: Jina Reader (tanpa API key, rate-limit rendah).
+ * Opsional: set JINA_API_KEY di env untuk kuota lebih tinggi.
+ */
+export async function scrapeViaJina(
+  pageUrl: string
+): Promise<ScrapeResult | null> {
+  const readerUrl = `https://r.jina.ai/${pageUrl}`;
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+  };
+  const apiKey = process.env.JINA_API_KEY?.trim();
+  if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+
+  let result: FetchTextResult;
+  try {
+    result = await fetchText(readerUrl, headers, HTML_TIMEOUT_MS);
+  } catch {
+    return null;
+  }
+
+  if (result.status !== 200) return null;
+
+  try {
+    const parsed = JSON.parse(result.text) as {
+      data?: {
+        title?: string;
+        content?: string;
+        url?: string;
+        images?: Record<string, string> | string[];
+      };
+    };
+    const title = (parsed.data?.title || "").trim();
+    const content = (parsed.data?.content || "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!title || content.length < 40) return null;
+
+    let mainImage: string | null = null;
+    const images: string[] = [];
+    const rawImages = parsed.data?.images;
+    if (Array.isArray(rawImages)) {
+      for (const src of rawImages) {
+        if (typeof src !== "string" || shouldSkipImage(src)) continue;
+        if (!mainImage) mainImage = src;
+        if (images.length < MAX_IMAGES) images.push(src);
+      }
+    } else if (rawImages && typeof rawImages === "object") {
+      for (const src of Object.values(rawImages)) {
+        if (typeof src !== "string" || shouldSkipImage(src)) continue;
+        if (!mainImage) mainImage = src;
+        if (images.length < MAX_IMAGES) images.push(src);
+      }
+    }
+
+    return {
+      title,
+      content,
+      mainImage,
+      images,
+      sourceUrl: parsed.data?.url || pageUrl,
+      fetchedVia: "jina",
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function scrapeViaRss(
